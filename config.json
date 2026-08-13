@@ -1,0 +1,18 @@
+{
+  "cameras": [
+    {
+      "brand": "hikvision",
+      "enabled": true,
+      "id": "cam01",
+      "ip": "10.10.0.5",
+      "name": "Kamera Depan",
+      "password": "sup3rmaN",
+      "port": "554",
+      "rtsp_url": "rtsp://admin:sup3rmaN@10.10.0.5:554/Streaming/Channels/101",
+      "username": "admin"
+    }
+  ],
+  "retention_days": 7,
+  "segment_time": 900,
+  "storage_path": "/recordings"
+}

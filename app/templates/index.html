@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVR Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        h1 { margin: 0; font-weight: 600; }
+
+        /* Main Nav Tabs */
+        .main-nav {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+            padding-bottom: 0.5rem;
+        }
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .nav-tab:hover { background: rgba(255,255,255,0.05); }
+        .nav-tab.active { background: var(--primary); color: white; }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .card {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .camera-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .camera-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .camera-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+            border-color: var(--primary);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-recording { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-stopped { background-color: var(--danger); }
+        .status-disabled { background-color: var(--text-muted); }
+
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        input[type="text"], input[type="number"], input[type="password"], select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background-color: #0f172a;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+        button.danger { background-color: var(--danger); }
+        button.danger:hover { background-color: #dc2626; }
+        button.secondary { background-color: #475569; }
+        button.secondary:hover { background-color: #334155; }
+        
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            align-items: center; justify-content: center;
+            z-index: 100;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: var(--panel-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-large { max-width: 900px; padding: 1.5rem; }
+        
+        .actions { margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end; }
+        
+        .cam-actions button {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            margin-top: 1rem;
+        }
+
+        .url-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Viewer Styles */
+        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+        .tab { padding: 0.75rem 1.5rem; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; font-weight: 600; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        
+        .viewer-container { display: none; }
+        .viewer-container.active { display: flex; flex-direction: column; gap: 1rem; }
+        
+        .live-stream-box {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .live-stream-box img { width: 100%; height: 100%; object-fit: contain; }
+
+        .playback-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 1rem;
+            height: 500px;
+        }
+
+        .recording-list {
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+
+        .date-group { margin-bottom: 1rem; }
+        .date-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-main); }
+        .time-item {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+        .time-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .time-item.active { background: var(--primary); color: white; }
+
+        .video-player-container {
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        video { width: 100%; height: 100%; outline: none; }
+
+        .log-box {
+            background: #000;
+            color: #10b981;
+            font-family: monospace;
+            padding: 1rem;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>NVR Dashboard</h1>
+                <p style="color: var(--text-muted); margin-top: 5px;">Python Powered Recording Engine</p>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button class="danger" onclick="window.location.href='/logout'">Logout</button>
+            </div>
+        </header>
+
+        <div class="main-nav">
+            <div class="nav-tab active" onclick="switchMainTab('dashboard')">Dashboard</div>
+            <div class="nav-tab" onclick="switchMainTab('system')">System Monitor</div>
+            <div class="nav-tab" onclick="switchMainTab('security')">User & Security</div>
+            <div class="nav-tab" onclick="switchMainTab('logs')">System Logs</div>
+        </div>
+
+        <!-- PAGE 1: Dashboard -->
+        <div id="page-dashboard" class="page active">
+            <div style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="secondary" onclick="openGridView()">Grid View</button>
+                <button onclick="openAddCameraModal()">+ Add Camera</button>
+            </div>
+
+            <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.1rem;">Storage Analytics</h2>
+                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem;" id="storageText">Calculating...</div>
+                </div>
+                <div style="width: 60%; background: rgba(255,255,255,0.1); height: 12px; border-radius: 6px; overflow: hidden;">
+                    <div id="storageBar" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.5s;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top: 0; font-size: 1.2rem;">Live Status</h2>
+                <div class="camera-grid" id="cameraGrid">Loading cameras...</div>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top: 0; font-size: 1.2rem;">Global Settings</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Storage Path</label>
+                        <input type="text" id="storagePath" value="">
+                    </div>
+                    <div class="form-group">
+                        <label>Retention (Days)</label>
+                        <input type="number" id="retentionDays" value="">
+                    </div>
+                </div>
+                <button onclick="saveGlobalSettings()" style="margin-top: 1rem;">Save Global Settings</button>
+            </div>
+        </div>
+
+        <!-- PAGE 2: System Monitor -->
+        <div id="page-system" class="page">
+            <div class="card">
+                <h2>Hardware Metrics</h2>
+                <div class="grid-2">
+                    <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">CPU Usage</div>
+                        <div style="font-size: 2rem; font-weight: 600; margin-top: 0.5rem;" id="cpuText">0%</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.2); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">RAM Usage</div>
+                        <div style="font-size: 2rem; font-weight: 600; margin-top: 0.5rem;" id="ramText">0%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>Engine Management</h2>
+                <p style="color: var(--text-muted);">Restarting the engine will stop and restart all FFmpeg recording streams.</p>
+                <button class="danger" onclick="restartEngine()" id="btnRestart">Restart NVR Engine</button>
+            </div>
+        </div>
+
+        <!-- PAGE 3: Security -->
+        <div id="page-security" class="page">
+            <div class="card">
+                <h2>Change Admin Credentials</h2>
+                <div class="form-group">
+                    <label>New Username</label>
+                    <input type="text" id="newUsername" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password">
+                </div>
+                <button onclick="changePassword()" id="btnPass">Update Credentials</button>
+            </div>
+        </div>
+
+        <!-- PAGE 4: System Logs -->
+        <div id="page-logs" class="page">
+            <div class="card">
+                <div class="flex-between" style="margin-bottom: 1rem;">
+                    <h2 style="margin: 0;">Server Logs</h2>
+                    <button class="secondary" onclick="fetchLogs()">Refresh Logs</button>
+                </div>
+                <div class="log-box" id="logBox">Loading...</div>
+            </div>
+        </div>
+    </div> <!-- end container -->
+
+    <!-- Grid View Modal (Full Screen) -->
+    <div class="modal" id="gridViewModal" style="background: var(--bg-color);">
+        <div style="width: 100%; height: 100%; padding: 1rem; display: flex; flex-direction: column;">
+            <div class="flex-between" style="margin-bottom: 1rem;">
+                <h2 style="margin: 0;">Matrix View</h2>
+                <button class="secondary" onclick="closeGridView()">Exit Grid</button>
+            </div>
+            <div id="gridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; flex: 1; align-content: start;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Viewer Modal -->
+    <div class="modal" id="viewerModal">
+        <div class="modal-content modal-large">
+            <div class="flex-between" style="margin-bottom: 1rem;">
+                <h2 id="viewerTitle" style="margin: 0;">Camera View</h2>
+                <button style="background: transparent; padding: 0.5rem; color: var(--text-muted);" onclick="closeViewer()">✕ Close</button>
+            </div>
+            <div class="tabs">
+                <div class="tab active" id="tabLive" onclick="switchViewerTab('live')">Live Preview</div>
+                <div class="tab" id="tabPlayback" onclick="switchViewerTab('playback')">Playback</div>
+            </div>
+            <div class="viewer-container active" id="viewLive">
+                <div class="live-stream-box">
+                    <img id="liveStreamImg" src="" alt="Loading stream..." onerror="this.onerror=null; this.alt='Stream unavailable or disconnected'; this.src='';">
+                </div>
+            </div>
+            <div class="viewer-container" id="viewPlayback">
+                <div class="playback-layout">
+                    <div class="recording-list" id="recordingList">Loading recordings...</div>
+                    <div class="video-player-container">
+                        <video id="playbackVideo" controls>
+                            <source src="" type="video/mp4">
+                        </video>
+                        <div id="noVideoMsg" style="position: absolute; color: var(--text-muted);">Select a recording to play</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Camera Modal -->
+    <div class="modal" id="cameraModal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="margin-top: 0;">Add Camera</h2>
+            <input type="hidden" id="camId">
+            <div class="form-group">
+                <label>Camera ID (no spaces)</label>
+                <input type="text" id="camIdInput" placeholder="e.g. cam_front">
+            </div>
+            <div class="form-group">
+                <label>Camera Name</label>
+                <input type="text" id="camName" placeholder="e.g. Front Door">
+            </div>
+            <div class="form-group">
+                <label>Brand / Format</label>
+                <select id="camBrand" onchange="toggleFormFields()">
+                    <option value="hikvision">Hikvision</option>
+                    <option value="dahua">Dahua</option>
+                    <option value="tapo">TP-Link Tapo</option>
+                    <option value="generic">Generic (stream1)</option>
+                    <option value="custom">Custom URL (Manual)</option>
+                </select>
+            </div>
+            <div id="standardFields">
+                <div class="form-group">
+                    <label>IP Address</label>
+                    <input type="text" id="camIp" placeholder="192.168.1.100">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="camUser" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="camPass" placeholder="password">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>RTSP Port</label>
+                    <input type="text" id="camPort" placeholder="554" value="554">
+                </div>
+            </div>
+            <div class="form-group" id="customUrlGroup" style="display: none;">
+                <label>Custom RTSP URL</label>
+                <input type="text" id="camUrl" placeholder="rtsp://user:pass@ip:554/stream">
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
+                <input type="checkbox" id="camEnabled" style="width: auto;" checked>
+                <label style="margin: 0; cursor: pointer;" for="camEnabled">Enabled</label>
+            </div>
+            
+            <div class="actions">
+                <button style="background: transparent; border: 1px solid var(--border);" onclick="closeModal()">Cancel</button>
+                <button class="secondary" onclick="testCameraConnection()" id="testBtn">Test Connection</button>
+                <button onclick="saveCamera()">Save Camera</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = { cameras: [] };
+        let currentStatus = [];
+        let currentViewCamId = null;
+
+        function switchMainTab(tabId) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('page-' + tabId).classList.add('active');
+
+            if(tabId === 'logs') fetchLogs();
+        }
+
+        async function fetchData() {
+            try {
+                const [configRes, statusRes, sysRes] = await Promise.all([
+                    fetch('/api/config'),
+                    fetch('/api/status'),
+                    fetch('/api/sysinfo')
+                ]);
+                
+                if(configRes.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                currentConfig = await configRes.json();
+                currentStatus = await statusRes.json();
+                
+                if (sysRes.ok) {
+                    const sys = await sysRes.json();
+                    document.getElementById('storageText').innerText = `${sys.used_gb} GB used / ${sys.total_gb} GB total`;
+                    const bar = document.getElementById('storageBar');
+                    bar.style.width = `${sys.percent_used}%`;
+                    if (sys.percent_used > 90) bar.style.background = 'var(--danger)';
+                    else bar.style.background = 'var(--primary)';
+                    
+                    document.getElementById('cpuText').innerText = sys.cpu_percent + "%";
+                    document.getElementById('ramText').innerText = sys.ram_percent + "%";
+                }
+                
+                renderDashboard();
+            } catch (e) {
+                console.error("Error fetching data", e);
+            }
+        }
+
+        function renderDashboard() {
+            document.getElementById('storagePath').value = currentConfig.storage_path || '/recordings';
+            document.getElementById('retentionDays').value = currentConfig.retention_days || 7;
+
+            const grid = document.getElementById('cameraGrid');
+            grid.innerHTML = '';
+            
+            if (!currentConfig.cameras || currentConfig.cameras.length === 0) {
+                grid.innerHTML = '<p style="color: var(--text-muted)">No cameras configured yet.</p>';
+                return;
+            }
+
+            currentConfig.cameras.forEach(cam => {
+                const status = currentStatus.find(s => s.id === cam.id) || {};
+                let indicatorClass = 'status-disabled';
+                let statusText = 'Disabled';
+                
+                if (cam.enabled) {
+                    if (status.recording) {
+                        indicatorClass = 'status-recording';
+                        statusText = 'Recording';
+                    } else {
+                        indicatorClass = 'status-stopped';
+                        statusText = 'Error / Stopped';
+                    }
+                }
+
+                let detailText = cam.brand && cam.brand !== 'custom' 
+                    ? `${cam.brand.toUpperCase()} - ${cam.ip}` 
+                    : cam.rtsp_url;
+
+                const card = document.createElement('div');
+                card.className = 'camera-card';
+                card.innerHTML = `
+                    <div class="flex-between">
+                        <h3 style="margin: 0; font-size: 1.1rem;">${cam.name}</h3>
+                        <div>
+                            <span class="status-indicator ${indicatorClass}"></span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted)">${statusText}</span>
+                        </div>
+                    </div>
+                    <div class="url-truncate" title="${cam.rtsp_url}">${detailText}</div>
+                    <div class="cam-actions">
+                        <button class="secondary" onclick="openViewer('${cam.id}', '${cam.name}')">View</button>
+                        <button onclick="editCamera('${cam.id}')">Edit</button>
+                        <button class="danger" onclick="deleteCamera('${cam.id}')">Delete</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        /* --- Grid View Logic --- */
+        function openGridView() {
+            const grid = document.getElementById('gridContainer');
+            grid.innerHTML = '';
+            currentConfig.cameras.forEach(cam => {
+                if (cam.enabled) {
+                    grid.innerHTML += `
+                        <div style="background: black; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; position: relative;">
+                            <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${cam.name}</div>
+                            <img src="/api/stream/${cam.id}?t=${new Date().getTime()}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.onerror=null; this.src='';">
+                        </div>
+                    `;
+                }
+            });
+            document.getElementById('gridViewModal').classList.add('active');
+        }
+
+        function closeGridView() {
+            document.getElementById('gridViewModal').classList.remove('active');
+            document.getElementById('gridContainer').innerHTML = ''; 
+        }
+
+        /* --- Viewer Logic --- */
+        function openViewer(camId, camName) {
+            currentViewCamId = camId;
+            document.getElementById('viewerTitle').innerText = camName;
+            document.getElementById('viewerModal').classList.add('active');
+            switchViewerTab('live');
+        }
+
+        function closeViewer() {
+            document.getElementById('viewerModal').classList.remove('active');
+            document.getElementById('liveStreamImg').src = "";
+            const vid = document.getElementById('playbackVideo');
+            vid.pause();
+            vid.src = "";
+            currentViewCamId = null;
+        }
+
+        function switchViewerTab(tab) {
+            document.getElementById('tabLive').classList.remove('active');
+            document.getElementById('tabPlayback').classList.remove('active');
+            document.getElementById('viewLive').classList.remove('active');
+            document.getElementById('viewPlayback').classList.remove('active');
+            
+            if (tab === 'live') {
+                document.getElementById('tabLive').classList.add('active');
+                document.getElementById('viewLive').classList.add('active');
+                document.getElementById('liveStreamImg').src = `/api/stream/${currentViewCamId}?t=${new Date().getTime()}`;
+                document.getElementById('playbackVideo').pause();
+            } else {
+                document.getElementById('tabPlayback').classList.add('active');
+                document.getElementById('viewPlayback').classList.add('active');
+                document.getElementById('liveStreamImg').src = "";
+                loadRecordings(currentViewCamId);
+            }
+        }
+
+        async function loadRecordings(camId) {
+            const listEl = document.getElementById('recordingList');
+            listEl.innerHTML = '<p style="color: var(--text-muted);">Loading...</p>';
+            try {
+                const res = await fetch(`/api/recordings/${camId}`);
+                const data = await res.json();
+                if (data.length === 0) {
+                    listEl.innerHTML = '<p style="color: var(--text-muted);">No recordings found.</p>';
+                    return;
+                }
+                listEl.innerHTML = '';
+                data.forEach(dateGroup => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'date-group';
+                    const title = document.createElement('div');
+                    title.className = 'date-title';
+                    title.innerText = dateGroup.date;
+                    groupDiv.appendChild(title);
+                    dateGroup.files.forEach(file => {
+                        const itemWrap = document.createElement('div');
+                        itemWrap.className = 'flex-between';
+                        const timeEl = document.createElement('div');
+                        timeEl.className = 'time-item';
+                        timeEl.style.flex = "1";
+                        timeEl.innerText = file.time;
+                        timeEl.onclick = () => playRecording(file.path, itemWrap);
+                        
+                        const dlBtn = document.createElement('button');
+                        dlBtn.innerText = "↓";
+                        dlBtn.style.padding = "2px 8px";
+                        dlBtn.style.marginLeft = "5px";
+                        dlBtn.style.background = "transparent";
+                        dlBtn.style.border = "1px solid var(--border)";
+                        dlBtn.onclick = (e) => { e.stopPropagation(); window.open(file.path + '?download=1'); };
+                        
+                        itemWrap.appendChild(timeEl);
+                        itemWrap.appendChild(dlBtn);
+                        groupDiv.appendChild(itemWrap);
+                    });
+                    listEl.appendChild(groupDiv);
+                });
+            } catch (e) {
+                listEl.innerHTML = '<p style="color: var(--danger);">Failed to load recordings.</p>';
+            }
+        }
+
+        function playRecording(path, wrapperEl) {
+            document.querySelectorAll('.time-item').forEach(e => e.classList.remove('active'));
+            if (wrapperEl) wrapperEl.querySelector('.time-item').classList.add('active');
+            const vid = document.getElementById('playbackVideo');
+            document.getElementById('noVideoMsg').style.display = 'none';
+            vid.src = path;
+            vid.play();
+        }
+
+        /* --- Settings Logic --- */
+        async function saveConfigToServer() {
+            try {
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentConfig)
+                });
+                if (res.ok) setTimeout(fetchData, 1000);
+                else alert("Failed to save configuration.");
+            } catch (e) { alert("Error saving configuration."); }
+        }
+
+        function saveGlobalSettings() {
+            currentConfig.storage_path = document.getElementById('storagePath').value;
+            currentConfig.retention_days = parseInt(document.getElementById('retentionDays').value);
+            saveConfigToServer();
+            alert("Global settings saved.");
+        }
+
+        const modal = document.getElementById('cameraModal');
+        let editingIndex = -1;
+
+        function toggleFormFields() {
+            const brand = document.getElementById('camBrand').value;
+            if (brand === 'custom') {
+                document.getElementById('standardFields').style.display = 'none';
+                document.getElementById('customUrlGroup').style.display = 'block';
+            } else {
+                document.getElementById('standardFields').style.display = 'block';
+                document.getElementById('customUrlGroup').style.display = 'none';
+            }
+        }
+
+        function openAddCameraModal() {
+            document.getElementById('modalTitle').innerText = 'Add Camera';
+            document.getElementById('camIdInput').value = '';
+            document.getElementById('camIdInput').disabled = false;
+            document.getElementById('camName').value = '';
+            document.getElementById('camBrand').value = 'hikvision';
+            document.getElementById('camIp').value = '';
+            document.getElementById('camUser').value = '';
+            document.getElementById('camPass').value = '';
+            document.getElementById('camPort').value = '554';
+            document.getElementById('camUrl').value = '';
+            document.getElementById('camEnabled').checked = true;
+            toggleFormFields();
+            editingIndex = -1;
+            modal.classList.add('active');
+        }
+
+        function editCamera(id) {
+            const index = currentConfig.cameras.findIndex(c => c.id === id);
+            if (index === -1) return;
+            const cam = currentConfig.cameras[index];
+            document.getElementById('modalTitle').innerText = 'Edit Camera';
+            document.getElementById('camIdInput').value = cam.id;
+            document.getElementById('camIdInput').disabled = true;
+            document.getElementById('camName').value = cam.name;
+            document.getElementById('camBrand').value = cam.brand || 'custom';
+            document.getElementById('camIp').value = cam.ip || '';
+            document.getElementById('camUser').value = cam.username || '';
+            document.getElementById('camPass').value = cam.password || '';
+            document.getElementById('camPort').value = cam.port || '554';
+            document.getElementById('camUrl').value = cam.rtsp_url || '';
+            document.getElementById('camEnabled').checked = cam.enabled !== false;
+            toggleFormFields();
+            editingIndex = index;
+            modal.classList.add('active');
+        }
+
+        function buildRtspUrl() {
+            const brand = document.getElementById('camBrand').value;
+            if (brand === 'custom') return document.getElementById('camUrl').value;
+            const ip = document.getElementById('camIp').value;
+            const user = document.getElementById('camUser').value;
+            const pass = document.getElementById('camPass').value;
+            const port = document.getElementById('camPort').value || "554";
+            if(!ip || !user || !pass) return null;
+            let auth = `${user}:${encodeURIComponent(pass)}`;
+            if (brand === 'hikvision') return `rtsp://${auth}@${ip}:${port}/Streaming/Channels/101`;
+            if (brand === 'dahua') return `rtsp://${auth}@${ip}:${port}/cam/realmonitor?channel=1&subtype=0`;
+            if (brand === 'tapo' || brand === 'generic') return `rtsp://${auth}@${ip}:${port}/stream1`;
+            return null;
+        }
+
+        async function testCameraConnection() {
+            const rtsp_url = buildRtspUrl();
+            if (!rtsp_url) {
+                alert("Please fill required fields.");
+                return;
+            }
+            const btn = document.getElementById('testBtn');
+            btn.innerText = "Testing..."; btn.disabled = true;
+            try {
+                const res = await fetch('/api/test_camera', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rtsp_url })
+                });
+                const data = await res.json();
+                if (res.ok) alert("Success: " + data.message);
+                else alert("Error: " + data.message);
+            } catch (e) { alert("Request failed."); }
+            finally { btn.innerText = "Test Connection"; btn.disabled = false; }
+        }
+
+        function saveCamera() {
+            const id = document.getElementById('camIdInput').value;
+            const name = document.getElementById('camName').value;
+            const brand = document.getElementById('camBrand').value;
+            const enabled = document.getElementById('camEnabled').checked;
+            if(!id || !name) { alert("Fill Camera ID and Name."); return; }
+            const rtsp_url = buildRtspUrl();
+            if (!rtsp_url) { alert("Fill required RTSP URL / IP Address fields."); return; }
+            let camData = { id, name, brand, enabled, rtsp_url };
+            if (brand !== 'custom') {
+                camData.ip = document.getElementById('camIp').value;
+                camData.username = document.getElementById('camUser').value;
+                camData.password = document.getElementById('camPass').value;
+                camData.port = document.getElementById('camPort').value || "554";
+            }
+            if (!currentConfig.cameras) currentConfig.cameras = [];
+            if (editingIndex > -1) currentConfig.cameras[editingIndex] = camData;
+            else {
+                if (currentConfig.cameras.find(c => c.id === id)) { alert("Camera ID already exists"); return; }
+                currentConfig.cameras.push(camData);
+            }
+            closeModal();
+            saveConfigToServer();
+        }
+
+        function deleteCamera(id) {
+            if(confirm("Are you sure?")) {
+                currentConfig.cameras = currentConfig.cameras.filter(c => c.id !== id);
+                saveConfigToServer();
+            }
+        }
+        function closeModal() { modal.classList.remove('active'); }
+
+        /* --- New API Functions --- */
+        async function restartEngine() {
+            if(!confirm("Restart NVR Engine? All recordings will briefly stop.")) return;
+            const btn = document.getElementById('btnRestart');
+            btn.innerText = "Restarting..."; btn.disabled = true;
+            try {
+                await fetch('/api/system/restart', {method: 'POST'});
+                alert("Restarted.");
+            } catch(e) { alert("Error"); }
+            finally { btn.innerText = "Restart NVR Engine"; btn.disabled = false; }
+        }
+
+        async function fetchLogs() {
+            const box = document.getElementById('logBox');
+            box.innerText = "Fetching logs...";
+            try {
+                const res = await fetch('/api/system/logs');
+                const data = await res.json();
+                box.innerText = data.logs.join('\n');
+                box.scrollTop = box.scrollHeight;
+            } catch(e) { box.innerText = "Error loading logs."; }
+        }
+
+        async function changePassword() {
+            const user = document.getElementById('newUsername').value;
+            const pass = document.getElementById('newPassword').value;
+            if(!user || !pass) { alert("Fields required"); return; }
+            
+            const btn = document.getElementById('btnPass');
+            btn.innerText = "Updating..."; btn.disabled = true;
+            try {
+                const res = await fetch('/api/users/change_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({username: user, password: pass})
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("Credentials updated. You will be logged out.");
+                    window.location.href = '/logout';
+                } else alert("Error: " + data.message);
+            } catch(e) { alert("Error"); }
+            finally { btn.innerText = "Update Credentials"; btn.disabled = false; }
+        }
+
+        fetchData();
+        setInterval(fetchData, 5000);
+    </script>
+</body>
+</html>

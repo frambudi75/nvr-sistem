@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  nvr-core:
+    build: .
+    container_name: python-nvr
+    restart: unless-stopped
+    volumes:
+      - ./recordings:/recordings
+      - ./config.json:/config.json
+    environment:
+      - TZ=Asia/Jakarta # Adjust timezone as needed
+    ports:
+      - "5000:5000"
