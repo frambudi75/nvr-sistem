@@ -5,3 +5,4 @@ recordings/
 nvr.log
 venv/
 .env
+*.pem

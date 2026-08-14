@@ -12,7 +12,21 @@
       "username": "admin"
     }
   ],
+  "notifications": {
+    "discord": {
+      "enabled": true,
+      "webhook_url": "https://discord.com/api/webhooks/1537722016365285410/PYQyqOzfwyIuatYeatMoNV8-J0P5AQMirZHhOt1tTQbvj79zOVVyavYumvp_jR1TOSih"
+    },
+    "telegram": {
+      "bot_token": "",
+      "chat_id": "",
+      "enabled": false
+    }
+  },
   "retention_days": 7,
   "segment_time": 900,
+  "smart_cleanup": {
+    "min_free_gb": 5
+  },
   "storage_path": "/recordings"
 }
