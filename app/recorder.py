@@ -47,6 +47,7 @@ class Recorder:
         try:
             self.process = subprocess.Popen(
                 command,
+                stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
@@ -57,12 +58,19 @@ class Recorder:
     def stop(self):
         if self.process:
             logger.info(f"[{self.camera_name}] Stopping recording...")
-            self.process.terminate()
             try:
+                if self.process.stdin:
+                    # Write 'q' to stdin to tell ffmpeg to stop and close output files gracefully
+                    self.process.stdin.write(b'q\n')
+                    self.process.stdin.flush()
                 self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                logger.warning(f"[{self.camera_name}] FFmpeg process did not terminate, killing it.")
-                self.process.kill()
+            except Exception as e:
+                logger.warning(f"[{self.camera_name}] Graceful stop failed: {e}. Falling back to terminate.")
+                try:
+                    self.process.terminate()
+                    self.process.wait(timeout=3)
+                except Exception:
+                    self.process.kill()
             self.process = None
             logger.info(f"[{self.camera_name}] Recording stopped.")
 

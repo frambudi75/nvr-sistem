@@ -4,152 +4,199 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NVR Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%230b0f19'/%3E%3Ccircle cx='50' cy='50' r='18' fill='none' stroke='%2306b6d4' stroke-width='8'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23ef4444'/%3E%3Cpath d='M25 50 H32 M68 50 H75' stroke='%2306b6d4' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(17, 24, 39, 0.55);
+            --panel-border: rgba(255, 255, 255, 0.05);
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
             --danger: #ef4444;
             --success: #10b981;
-            --border: #334155;
+            --border: rgba(255, 255, 255, 0.06);
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
+            background: radial-gradient(circle at top right, #111827, #070a13 75%);
+            background-attachment: fixed;
             color: var(--text-main);
             margin: 0;
             padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .container {
             max-width: 1000px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 2.5rem 2rem;
         }
 
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
 
-        h1 { margin: 0; font-weight: 600; }
+        h1 { margin: 0; font-weight: 600; font-size: 1.75rem; letter-spacing: -0.025em; }
 
         /* Main Nav Tabs */
         .main-nav {
             display: flex;
-            gap: 1rem;
+            gap: 0.25rem;
             border-bottom: 1px solid var(--border);
             margin-bottom: 2rem;
-            padding-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
         }
         .nav-tab {
-            padding: 0.5rem 1rem;
+            padding: 0.5rem 0.85rem;
             cursor: pointer;
             color: var(--text-muted);
             border-radius: 6px;
-            font-weight: 600;
+            font-weight: 500;
+            font-size: 0.9rem;
             transition: all 0.2s;
+            border: 1px solid transparent;
         }
-        .nav-tab:hover { background: rgba(255,255,255,0.05); }
-        .nav-tab.active { background: var(--primary); color: white; }
+        .nav-tab:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .nav-tab.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--panel-border);
+        }
 
         .page { display: none; }
         .page.active { display: block; }
 
         .card {
-            background-color: var(--panel-bg);
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
             border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.75rem;
+            box-shadow: var(--card-shadow);
             margin-bottom: 1.5rem;
         }
 
         .camera-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
+            gap: 1.25rem;
         }
 
         .camera-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
+            background: rgba(255, 255, 255, 0.015);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            padding: 1.25rem;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .camera-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
-            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.035);
+            border-color: rgba(2, 132, 199, 0.3);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
         .status-indicator {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             margin-right: 8px;
         }
 
-        .status-recording { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
-        .status-stopped { background-color: var(--danger); }
+        .status-recording {
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: pulse-green 2s infinite;
+        }
+        .status-stopped { background-color: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
         .status-disabled { background-color: var(--text-muted); }
 
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.9);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+            }
+            100% {
+                transform: scale(0.9);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .form-group { margin-bottom: 1.25rem; }
+        label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+        
         input[type="text"], input[type="number"], input[type="password"], select {
             width: 100%;
-            padding: 0.75rem;
+            padding: 0.65rem 0.85rem;
             border-radius: 6px;
-            border: 1px solid var(--border);
-            background-color: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background-color: rgba(7, 10, 19, 0.5);
             color: white;
             font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
             box-sizing: border-box;
+            transition: all 0.2s;
         }
         
         input:focus, select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            background-color: rgba(7, 10, 19, 0.7);
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
         }
 
         button {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.6rem 1.25rem;
             border-radius: 6px;
             cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.2s;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
             font-family: 'Inter', sans-serif;
         }
 
-        button:hover { background-color: var(--primary-hover); }
+        button:hover {
+            background-color: var(--primary-hover);
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.25);
+        }
         button.danger { background-color: var(--danger); }
-        button.danger:hover { background-color: #dc2626; }
-        button.secondary { background-color: #475569; }
-        button.secondary:hover { background-color: #334155; }
+        button.danger:hover { background-color: #dc2626; box-shadow: 0 0 10px rgba(220, 38, 38, 0.25); }
+        button.secondary { background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
+        button.secondary:hover { background-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
         
         .flex-between { display: flex; justify-content: space-between; align-items: center; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
         
         /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(4px);
+            background: rgba(3, 7, 18, 0.8);
+            backdrop-filter: blur(8px);
             align-items: center; justify-content: center;
             z-index: 100;
         }
@@ -157,24 +204,25 @@
         .modal.active { display: flex; }
         
         .modal-content {
-            background: var(--panel-bg);
+            background: #111827;
             padding: 2rem;
             border-radius: 12px;
             width: 100%;
             max-width: 500px;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             max-height: 90vh;
             overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
         }
 
         .modal-large { max-width: 900px; padding: 1.5rem; }
         
-        .actions { margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end; }
+        .actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end; }
         
         .cam-actions button {
-            padding: 0.4rem 0.8rem;
+            padding: 0.35rem 0.75rem;
             font-size: 0.8rem;
-            margin-top: 1rem;
+            margin-top: 0.75rem;
         }
 
         .url-truncate {
@@ -182,13 +230,13 @@
             overflow: hidden;
             text-overflow: ellipsis;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             margin-top: 0.5rem;
         }
 
         /* Viewer Styles */
-        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
-        .tab { padding: 0.75rem 1.5rem; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; font-weight: 600; }
+        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
+        .tab { padding: 0.5rem 1.25rem; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; font-weight: 500; font-size: 0.9rem; }
         .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
         
         .viewer-container { display: none; }
@@ -197,24 +245,26 @@
         .live-stream-box {
             width: 100%;
             aspect-ratio: 16/9;
-            background: #000;
+            background: #030712;
             border-radius: 8px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
+            border: 1px solid var(--border);
+            position: relative;
         }
         .live-stream-box img { width: 100%; height: 100%; object-fit: contain; }
 
         .playback-layout {
             display: grid;
             grid-template-columns: 250px 1fr;
-            gap: 1rem;
+            gap: 1.25rem;
             height: 500px;
         }
 
         .recording-list {
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.25);
             border-radius: 8px;
             padding: 1rem;
             overflow-y: auto;
@@ -222,39 +272,132 @@
         }
 
         .date-group { margin-bottom: 1rem; }
-        .date-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--text-main); }
+        .date-title { font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em; }
         .time-item {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
             cursor: pointer;
             border-radius: 4px;
             margin-bottom: 2px;
+            transition: all 0.15s;
         }
-        .time-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .time-item:hover { background: rgba(255, 255, 255, 0.03); color: white; }
         .time-item.active { background: var(--primary); color: white; }
 
         .video-player-container {
-            background: #000;
+            background: #030712;
             border-radius: 8px;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
+            border: 1px solid var(--border);
         }
         video { width: 100%; height: 100%; outline: none; }
 
         .log-box {
-            background: #000;
+            background: rgba(3, 7, 18, 0.6);
             color: #10b981;
             font-family: monospace;
-            padding: 1rem;
+            padding: 1.25rem;
             border-radius: 8px;
             height: 400px;
             overflow-y: auto;
             white-space: pre-wrap;
             border: 1px solid var(--border);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* Playback Timeline Scrubber Styles */
+        .timeline-wrapper {
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .timeline-container {
+            position: relative;
+            width: 100%;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            cursor: pointer;
+            overflow: hidden;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .timeline-container:hover {
+            border-color: rgba(2, 132, 199, 0.3);
+        }
+
+        .timeline-tracks-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        .timeline-track-segment {
+            position: absolute;
+            top: 2px;
+            height: calc(100% - 4px);
+            background: rgba(16, 185, 129, 0.25);
+            border-left: 1px solid rgba(16, 185, 129, 0.5);
+            border-right: 1px solid rgba(16, 185, 129, 0.5);
+            border-radius: 2px;
+        }
+
+        .timeline-handle {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            pointer-events: none;
+            z-index: 10;
+            transform: translateX(-50%);
+            left: 0%;
+        }
+
+        .timeline-tooltip {
+            position: absolute;
+            bottom: 34px;
+            transform: translateX(-50%);
+            background: #030712;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+            white-space: nowrap;
+        }
+
+        .timeline-container:hover .timeline-tooltip {
+            display: block;
+        }
+
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: monospace;
+            padding: 0 4px;
+        }
+
+        /* LEGIBILITY FIX FOR SELECT OPTIONS */
+        select option {
+            background-color: #111827 !important;
+            color: #ffffff !important;
         }
     </style>
 </head>
@@ -273,6 +416,7 @@
         <div class="main-nav">
             <div class="nav-tab active" onclick="switchMainTab('dashboard')">Dashboard</div>
             <div class="nav-tab" onclick="switchMainTab('system')">System Monitor</div>
+            <div class="nav-tab" onclick="switchMainTab('settings')">Settings</div>
             <div class="nav-tab" onclick="switchMainTab('security')">User & Security</div>
             <div class="nav-tab" onclick="switchMainTab('logs')">System Logs</div>
         </div>
@@ -298,7 +442,10 @@
                 <h2 style="margin-top: 0; font-size: 1.2rem;">Live Status</h2>
                 <div class="camera-grid" id="cameraGrid">Loading cameras...</div>
             </div>
+        </div>
 
+        <!-- PAGE 5: Settings -->
+        <div id="page-settings" class="page">
             <div class="card">
                 <h2 style="margin-top: 0; font-size: 1.2rem;">Global Settings</h2>
                 <div class="grid-2">
@@ -312,6 +459,47 @@
                     </div>
                 </div>
                 <button onclick="saveGlobalSettings()" style="margin-top: 1rem;">Save Global Settings</button>
+            </div>
+
+            <div class="card">
+                <h2 style="margin-top: 0; font-size: 1.2rem;">Notification Alerts & Smart Storage</h2>
+                
+                <h3 style="font-size: 1rem; color: var(--primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Telegram Notification</h3>
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="checkbox" id="notifTgEnabled" style="width: auto;">
+                    <label style="margin: 0; cursor: pointer;" for="notifTgEnabled">Enable Telegram Alerts</label>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Telegram Bot Token</label>
+                        <input type="password" id="notifTgToken" placeholder="123456789:ABCdefGhI...">
+                    </div>
+                    <div class="form-group">
+                        <label>Telegram Chat ID</label>
+                        <input type="text" id="notifTgChatId" placeholder="-100123456789">
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Discord Notification</h3>
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="checkbox" id="notifDcEnabled" style="width: auto;">
+                    <label style="margin: 0; cursor: pointer;" for="notifDcEnabled">Enable Discord Alerts</label>
+                </div>
+                <div class="form-group">
+                    <label>Discord Webhook URL</label>
+                    <input type="password" id="notifDcWebhook" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+
+                <h3 style="font-size: 1rem; color: var(--primary); margin-top: 1.5rem; margin-bottom: 0.5rem;">Smart Storage Purge</h3>
+                <div class="form-group">
+                    <label>Minimum Free Disk Space (GB) - <i>Trigger auto-delete for oldest files if below this</i></label>
+                    <input type="number" id="smartMinFree" placeholder="5" value="5">
+                </div>
+
+                <div class="actions" style="justify-content: flex-start; margin-top: 1.5rem; gap: 1rem;">
+                    <button onclick="saveNotificationSettings()">Save Settings</button>
+                    <button class="secondary" onclick="triggerTestNotification()" id="btnTestNotif">Test Notifications</button>
+                </div>
             </div>
         </div>
 
@@ -330,6 +518,21 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card">
+                <h2>Real-time Hardware Usage</h2>
+                <div style="width: 100%; height: 260px; position: relative; margin-top: 1rem;">
+                    <canvas id="hardwareChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Storage Allocation by Camera</h2>
+                <div style="width: 100%; height: 260px; position: relative; margin-top: 1rem; display: flex; align-items: center; justify-content: center;">
+                    <canvas id="storageAnalyticsChart"></canvas>
+                </div>
+            </div>
+
             <div class="card">
                 <h2>Engine Management</h2>
                 <p style="color: var(--text-muted);">Restarting the engine will stop and restart all FFmpeg recording streams.</p>
@@ -369,7 +572,19 @@
     <div class="modal" id="gridViewModal" style="background: var(--bg-color);">
         <div style="width: 100%; height: 100%; padding: 1rem; display: flex; flex-direction: column;">
             <div class="flex-between" style="margin-bottom: 1rem;">
-                <h2 style="margin: 0;">Matrix View</h2>
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <h2 style="margin: 0;">Matrix View</h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">Layout:</span>
+                        <select id="gridColsSelect" onchange="changeGridLayout()" style="width: auto; padding: 0.35rem 0.75rem; font-size: 0.85rem; background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: white;">
+                            <option value="auto">Auto</option>
+                            <option value="1">1x1</option>
+                            <option value="2" selected>2x2</option>
+                            <option value="3">3x3</option>
+                            <option value="4">4x4</option>
+                        </select>
+                    </div>
+                </div>
                 <button class="secondary" onclick="closeGridView()">Exit Grid</button>
             </div>
             <div id="gridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; flex: 1; align-content: start;">
@@ -391,16 +606,61 @@
             <div class="viewer-container active" id="viewLive">
                 <div class="live-stream-box">
                     <img id="liveStreamImg" src="" alt="Loading stream..." onerror="this.onerror=null; this.alt='Stream unavailable or disconnected'; this.src='';">
+                    <canvas id="motionCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
                 </div>
             </div>
             <div class="viewer-container" id="viewPlayback">
                 <div class="playback-layout">
-                    <div class="recording-list" id="recordingList">Loading recordings...</div>
-                    <div class="video-player-container">
-                        <video id="playbackVideo" controls>
-                            <source src="" type="video/mp4">
-                        </video>
-                        <div id="noVideoMsg" style="position: absolute; color: var(--text-muted);">Select a recording to play</div>
+                    <div class="recording-list" id="recordingList">Loading dates...</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="video-player-container">
+                            <video id="playbackVideo" controls>
+                                <source src="" type="video/mp4">
+                            </video>
+                            <div id="noVideoMsg" style="position: absolute; color: var(--text-muted);">Select a date and click on the timeline to play</div>
+                        </div>
+                        
+                        <!-- Timeline Scrubber Container -->
+                        <div class="timeline-wrapper" id="timelineWrapper" style="display: none;">
+                            <div class="timeline-container" id="timelineContainer" onmousemove="updateTimelineTooltip(event)" onmouseleave="hideTimelineTooltip()" onclick="seekTimeline(event)">
+                                <div class="timeline-tracks-container" id="timelineTracks"></div>
+                                <div class="timeline-handle" id="timelineHandle"></div>
+                                <div class="timeline-tooltip" id="timelineTooltip">00:00:00</div>
+                            </div>
+                            <div class="timeline-labels">
+                                <span>00:00</span><span>03:00</span><span>06:00</span><span>09:00</span>
+                                <span>12:00</span><span>15:00</span><span>18:00</span><span>21:00</span><span>24:00</span>
+                            </div>
+
+                            <!-- Export Clip Panel (Opsi B) -->
+                            <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem;">
+                                <div class="flex-between">
+                                    <button class="secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;" onclick="toggleExportPanel()" id="btnToggleExport">✂️ Export Clip</button>
+                                </div>
+                                <div id="exportPanel" style="display: none; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 1rem; border-radius: 6px; margin-top: 0.5rem; gap: 1rem; flex-direction: column;">
+                                    <div class="grid-2">
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label>Start Time (HH:MM:SS)</label>
+                                            <div style="display: flex; gap: 0.25rem;">
+                                                <input type="text" id="clipStart" placeholder="e.g. 14:15:00" style="padding: 0.4rem; font-size: 0.85rem; font-family: monospace;">
+                                                <button class="secondary" style="padding: 0 0.5rem;" onclick="setClipTime('start')" title="Use current video time">📍 Use Current</button>
+                                            </div>
+                                        </div>
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label>End Time (HH:MM:SS)</label>
+                                            <div style="display: flex; gap: 0.25rem;">
+                                                <input type="text" id="clipEnd" placeholder="e.g. 14:20:00" style="padding: 0.4rem; font-size: 0.85rem; font-family: monospace;">
+                                                <button class="secondary" style="padding: 0 0.5rem;" onclick="setClipTime('end')" title="Use current video time">📍 Use Current</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+                                        <button class="secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="toggleExportPanel()">Cancel</button>
+                                        <button style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="downloadClip()" id="btnDownloadClip">Download Clip</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -472,6 +732,20 @@
         let currentStatus = [];
         let currentViewCamId = null;
 
+        // Chart.js Global Variables
+        let hardwareChart = null;
+        let storageChart = null; // Donut chart for storage per camera
+        let chartLabels = [];
+        let cpuData = [];
+        let ramData = [];
+        const maxDataPoints = 20;
+
+        // Playback State Variables
+        let activeRecordingsData = [];
+        let selectedDateFiles = [];
+        let activePlayingFileIndex = -1;
+        let activePlayingDate = "";
+
         function switchMainTab(tabId) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -480,6 +754,7 @@
             document.getElementById('page-' + tabId).classList.add('active');
 
             if(tabId === 'logs') fetchLogs();
+            if(tabId === 'system') fetchStorageAnalytics();
         }
 
         async function fetchData() {
@@ -508,6 +783,24 @@
                     
                     document.getElementById('cpuText').innerText = sys.cpu_percent + "%";
                     document.getElementById('ramText').innerText = sys.ram_percent + "%";
+
+                    // Update Chart Data
+                    if (hardwareChart) {
+                        const now = new Date();
+                        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        
+                        chartLabels.push(timeStr);
+                        cpuData.push(sys.cpu_percent);
+                        ramData.push(sys.ram_percent);
+                        
+                        if (chartLabels.length > maxDataPoints) {
+                            chartLabels.shift();
+                            cpuData.shift();
+                            ramData.shift();
+                        }
+                        
+                        hardwareChart.update('none'); // smooth and fast update
+                    }
                 }
                 
                 renderDashboard();
@@ -517,8 +810,36 @@
         }
 
         function renderDashboard() {
-            document.getElementById('storagePath').value = currentConfig.storage_path || '/recordings';
-            document.getElementById('retentionDays').value = currentConfig.retention_days || 7;
+            const setIfInactive = (id, val) => {
+                const el = document.getElementById(id);
+                if (el && document.activeElement !== el) {
+                    el.value = val;
+                }
+            };
+            const setCheckedIfInactive = (id, checked) => {
+                const el = document.getElementById(id);
+                if (el && document.activeElement !== el) {
+                    el.checked = checked;
+                }
+            };
+
+            setIfInactive('storagePath', currentConfig.storage_path || '/recordings');
+            setIfInactive('retentionDays', currentConfig.retention_days !== undefined ? currentConfig.retention_days : 7);
+
+            // Load Notifications & Smart Cleanup settings
+            const notif = currentConfig.notifications || {};
+            const tg = notif.telegram || {};
+            const dc = notif.discord || {};
+            const smart = currentConfig.smart_cleanup || {};
+
+            setCheckedIfInactive('notifTgEnabled', !!tg.enabled);
+            setIfInactive('notifTgToken', tg.bot_token || '');
+            setIfInactive('notifTgChatId', tg.chat_id || '');
+            
+            setCheckedIfInactive('notifDcEnabled', !!dc.enabled);
+            setIfInactive('notifDcWebhook', dc.webhook_url || '');
+            
+            setIfInactive('smartMinFree', smart.min_free_gb !== undefined ? smart.min_free_gb : 5);
 
             const grid = document.getElementById('cameraGrid');
             grid.innerHTML = '';
@@ -575,19 +896,32 @@
             currentConfig.cameras.forEach(cam => {
                 if (cam.enabled) {
                     grid.innerHTML += `
-                        <div style="background: black; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; position: relative;">
+                        <div style="background: black; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; position: relative; border: 1px solid rgba(255,255,255,0.06);">
                             <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${cam.name}</div>
                             <img src="/api/stream/${cam.id}?t=${new Date().getTime()}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.onerror=null; this.src='';">
                         </div>
                     `;
                 }
             });
+            changeGridLayout();
             document.getElementById('gridViewModal').classList.add('active');
         }
 
         function closeGridView() {
             document.getElementById('gridViewModal').classList.remove('active');
             document.getElementById('gridContainer').innerHTML = ''; 
+        }
+
+        function changeGridLayout() {
+            const cols = document.getElementById('gridColsSelect').value;
+            const container = document.getElementById('gridContainer');
+            if (!container) return;
+            
+            if (cols === 'auto') {
+                container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(400px, 1fr))';
+            } else {
+                container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            }
         }
 
         /* --- Viewer Logic --- */
@@ -600,11 +934,24 @@
 
         function closeViewer() {
             document.getElementById('viewerModal').classList.remove('active');
-            document.getElementById('liveStreamImg').src = "";
+            
+            // Reset zoom scale
+            const liveImg = document.getElementById('liveStreamImg');
+            if (liveImg && liveImg.resetZoom) liveImg.resetZoom();
             const vid = document.getElementById('playbackVideo');
+            if (vid && vid.resetZoom) vid.resetZoom();
+            
+            liveImg.src = "";
             vid.pause();
             vid.src = "";
             currentViewCamId = null;
+            
+            // Reset playback variables
+            activeRecordingsData = [];
+            selectedDateFiles = [];
+            activePlayingFileIndex = -1;
+            activePlayingDate = "";
+            document.getElementById('timelineWrapper').style.display = 'none';
         }
 
         function switchViewerTab(tab) {
@@ -612,6 +959,12 @@
             document.getElementById('tabPlayback').classList.remove('active');
             document.getElementById('viewLive').classList.remove('active');
             document.getElementById('viewPlayback').classList.remove('active');
+            
+            // Reset zoom scale when switching tabs
+            const liveImg = document.getElementById('liveStreamImg');
+            if (liveImg && liveImg.resetZoom) liveImg.resetZoom();
+            const vid = document.getElementById('playbackVideo');
+            if (vid && vid.resetZoom) vid.resetZoom();
             
             if (tab === 'live') {
                 document.getElementById('tabLive').classList.add('active');
@@ -629,56 +982,329 @@
         async function loadRecordings(camId) {
             const listEl = document.getElementById('recordingList');
             listEl.innerHTML = '<p style="color: var(--text-muted);">Loading...</p>';
+            
+            // Hide timeline wrapper and reset player
+            document.getElementById('timelineWrapper').style.display = 'none';
+            const vid = document.getElementById('playbackVideo');
+            vid.pause();
+            vid.src = "";
+            document.getElementById('noVideoMsg').style.display = 'block';
+            document.getElementById('noVideoMsg').innerText = "Select a date and click on the timeline to play";
+            
             try {
                 const res = await fetch(`/api/recordings/${camId}`);
-                const data = await res.json();
-                if (data.length === 0) {
+                activeRecordingsData = await res.json();
+                if (activeRecordingsData.length === 0) {
                     listEl.innerHTML = '<p style="color: var(--text-muted);">No recordings found.</p>';
                     return;
                 }
                 listEl.innerHTML = '';
-                data.forEach(dateGroup => {
-                    const groupDiv = document.createElement('div');
-                    groupDiv.className = 'date-group';
-                    const title = document.createElement('div');
-                    title.className = 'date-title';
-                    title.innerText = dateGroup.date;
-                    groupDiv.appendChild(title);
-                    dateGroup.files.forEach(file => {
-                        const itemWrap = document.createElement('div');
-                        itemWrap.className = 'flex-between';
-                        const timeEl = document.createElement('div');
-                        timeEl.className = 'time-item';
-                        timeEl.style.flex = "1";
-                        timeEl.innerText = file.time;
-                        timeEl.onclick = () => playRecording(file.path, itemWrap);
-                        
-                        const dlBtn = document.createElement('button');
-                        dlBtn.innerText = "↓";
-                        dlBtn.style.padding = "2px 8px";
-                        dlBtn.style.marginLeft = "5px";
-                        dlBtn.style.background = "transparent";
-                        dlBtn.style.border = "1px solid var(--border)";
-                        dlBtn.onclick = (e) => { e.stopPropagation(); window.open(file.path + '?download=1'); };
-                        
-                        itemWrap.appendChild(timeEl);
-                        itemWrap.appendChild(dlBtn);
-                        groupDiv.appendChild(itemWrap);
-                    });
-                    listEl.appendChild(groupDiv);
+                
+                activeRecordingsData.forEach(dateGroup => {
+                    const item = document.createElement('div');
+                    item.className = 'time-item';
+                    item.innerText = dateGroup.date;
+                    item.onclick = () => selectPlaybackDate(dateGroup.date, item);
+                    listEl.appendChild(item);
                 });
             } catch (e) {
                 listEl.innerHTML = '<p style="color: var(--danger);">Failed to load recordings.</p>';
             }
         }
 
-        function playRecording(path, wrapperEl) {
-            document.querySelectorAll('.time-item').forEach(e => e.classList.remove('active'));
-            if (wrapperEl) wrapperEl.querySelector('.time-item').classList.add('active');
+        function selectPlaybackDate(dateStr, element) {
+            document.querySelectorAll('.recording-list .time-item').forEach(e => e.classList.remove('active'));
+            if (element) element.classList.add('active');
+            
+            activePlayingDate = dateStr;
+            
+            const group = activeRecordingsData.find(g => g.date === dateStr);
+            if (!group) return;
+            
+            const segmentDuration = currentConfig.segment_time || 900;
+            
+            selectedDateFiles = group.files.map(f => {
+                const parts = f.time.split(':');
+                const startSeconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+                return {
+                    ...f,
+                    startSeconds,
+                    endSeconds: startSeconds + segmentDuration
+                };
+            });
+            
+            selectedDateFiles.sort((a, b) => a.startSeconds - b.startSeconds);
+            renderTimelineTracks();
+            document.getElementById('timelineWrapper').style.display = 'block';
+        }
+
+        function renderTimelineTracks() {
+            const tracksContainer = document.getElementById('timelineTracks');
+            tracksContainer.innerHTML = '';
+            
+            const totalDaySeconds = 86400;
+            const segmentDuration = currentConfig.segment_time || 900;
+            
+            selectedDateFiles.forEach(file => {
+                const leftPercent = (file.startSeconds / totalDaySeconds) * 100;
+                const widthPercent = (segmentDuration / totalDaySeconds) * 100;
+                
+                const track = document.createElement('div');
+                track.className = 'timeline-track-segment';
+                track.style.left = `${leftPercent}%`;
+                track.style.width = `${widthPercent}%`;
+                track.title = `Recorded: ${file.time}`;
+                
+                tracksContainer.appendChild(track);
+            });
+            
+            document.getElementById('timelineHandle').style.left = '0%';
+        }
+
+        function updateTimelineTooltip(event) {
+            const container = document.getElementById('timelineContainer');
+            const rect = container.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = x / rect.width;
+            
+            const totalDaySeconds = 86400;
+            const hoverSeconds = Math.max(0, Math.min(totalDaySeconds, percent * totalDaySeconds));
+            
+            const hrs = Math.floor(hoverSeconds / 3600);
+            const mins = Math.floor((hoverSeconds % 3600) / 60);
+            const secs = Math.floor(hoverSeconds % 60);
+            const timeStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            const tooltip = document.getElementById('timelineTooltip');
+            tooltip.innerText = timeStr;
+            tooltip.style.left = `${(percent * 100)}%`;
+        }
+
+        function hideTimelineTooltip() {
+            // Managed by CSS hover selector primarily
+        }
+
+        function seekTimeline(event) {
+            if (selectedDateFiles.length === 0) return;
+            
+            const container = document.getElementById('timelineContainer');
+            const rect = container.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = x / rect.width;
+            
+            const totalDaySeconds = 86400;
+            const targetSeconds = Math.max(0, Math.min(totalDaySeconds, percent * totalDaySeconds));
+            
+            let targetFileIndex = selectedDateFiles.findIndex(f => targetSeconds >= f.startSeconds && targetSeconds <= f.endSeconds);
+            
+            if (targetFileIndex === -1) {
+                targetFileIndex = selectedDateFiles.findIndex(f => f.startSeconds > targetSeconds);
+                if (targetFileIndex === -1) return;
+                playFileAtIndex(targetFileIndex, 0);
+            } else {
+                const offsetSeconds = targetSeconds - selectedDateFiles[targetFileIndex].startSeconds;
+                playFileAtIndex(targetFileIndex, offsetSeconds);
+            }
+        }
+
+        function playFileAtIndex(index, offsetSeconds) {
+            if (index < 0 || index >= selectedDateFiles.length) return;
+            
+            activePlayingFileIndex = index;
+            const file = selectedDateFiles[index];
             const vid = document.getElementById('playbackVideo');
+            
             document.getElementById('noVideoMsg').style.display = 'none';
-            vid.src = path;
-            vid.play();
+            vid.src = file.path;
+            vid.load();
+            
+            vid.onloadedmetadata = () => {
+                vid.currentTime = offsetSeconds;
+                vid.play();
+                vid.onloadedmetadata = null;
+            };
+        }
+
+        /* --- Digital Zoom & Pan Logic (Opsi A) --- */
+        function setupZoomPan(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            let scale = 1;
+            let panX = 0;
+            let panY = 0;
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+
+            function reset() {
+                scale = 1;
+                panX = 0;
+                panY = 0;
+                applyTransform();
+            }
+
+            function applyTransform() {
+                el.style.transform = `scale(${scale}) translate(${panX}px, ${panY}px)`;
+                if (scale > 1) {
+                    el.style.cursor = isDragging ? 'grabbing' : 'grab';
+                } else {
+                    el.style.cursor = 'default';
+                }
+            }
+
+            el.resetZoom = reset;
+
+            el.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 0.1;
+                if (e.deltaY < 0) {
+                    scale = Math.min(5, scale + zoomFactor);
+                } else {
+                    scale = Math.max(1, scale - zoomFactor);
+                }
+                
+                if (scale === 1) {
+                    panX = 0;
+                    panY = 0;
+                }
+                applyTransform();
+            }, { passive: false });
+
+            el.addEventListener('mousedown', (e) => {
+                if (scale <= 1) return;
+                isDragging = true;
+                startX = e.clientX - panX * scale;
+                startY = e.clientY - panY * scale;
+                applyTransform();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                panX = (e.clientX - startX) / scale;
+                panY = (e.clientY - startY) / scale;
+                applyTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    applyTransform();
+                }
+            });
+
+            el.addEventListener('dblclick', () => {
+                if (scale > 1) {
+                    reset();
+                } else {
+                    scale = 2;
+                    panX = 0;
+                    panY = 0;
+                    applyTransform();
+                }
+            });
+        }
+
+        /* --- Video Clip Exporter Logic (Opsi B) --- */
+        function toggleExportPanel() {
+            const panel = document.getElementById('exportPanel');
+            const btn = document.getElementById('btnToggleExport');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'flex';
+                btn.style.background = 'rgba(255,255,255,0.08)';
+                
+                // Prefill times
+                setClipTime('start');
+                
+                const vid = document.getElementById('playbackVideo');
+                if (vid && activePlayingFileIndex !== -1) {
+                    const currentFile = selectedDateFiles[activePlayingFileIndex];
+                    const absoluteSeconds = Math.min(86400, currentFile.startSeconds + vid.currentTime + 60);
+                    const hrs = Math.floor(absoluteSeconds / 3600);
+                    const mins = Math.floor((absoluteSeconds % 3600) / 60);
+                    const secs = Math.floor(absoluteSeconds % 60);
+                    document.getElementById('clipEnd').value = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                }
+            } else {
+                panel.style.display = 'none';
+                btn.style.background = 'transparent';
+            }
+        }
+
+        function setClipTime(type) {
+            const vid = document.getElementById('playbackVideo');
+            if (activePlayingFileIndex === -1 || !vid || !vid.src) {
+                alert("Please play a video segment first.");
+                return;
+            }
+            
+            const currentFile = selectedDateFiles[activePlayingFileIndex];
+            const absoluteSeconds = currentFile.startSeconds + vid.currentTime;
+            
+            const hrs = Math.floor(absoluteSeconds / 3600);
+            const mins = Math.floor((absoluteSeconds % 3600) / 60);
+            const secs = Math.floor(absoluteSeconds % 60);
+            const timeStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            if (type === 'start') {
+                document.getElementById('clipStart').value = timeStr;
+            } else {
+                document.getElementById('clipEnd').value = timeStr;
+            }
+        }
+
+        async function downloadClip() {
+            const start = document.getElementById('clipStart').value;
+            const end = document.getElementById('clipEnd').value;
+            if (!start || !end) {
+                alert("Please specify start and end times.");
+                return;
+            }
+            
+            const btn = document.getElementById('btnDownloadClip');
+            const originalText = btn.innerText;
+            btn.innerText = "Processing clip...";
+            btn.disabled = true;
+            
+            const payload = {
+                cam_id: currentViewCamId,
+                date: activePlayingDate,
+                start_time: start,
+                end_time: end
+            };
+            
+            try {
+                const res = await fetch('/api/recordings/export_clip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    const safeStart = start.replace(/:/g, '-');
+                    const safeEnd = end.replace(/:/g, '-');
+                    a.download = `clip_${currentViewCamId}_${activePlayingDate}_${safeStart}_${safeEnd}.mp4`;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    alert("Clip downloaded successfully!");
+                } else {
+                    const data = await res.json();
+                    alert("Failed to export clip: " + (data.message || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Request failed: " + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
         }
 
         /* --- Settings Logic --- */
@@ -699,6 +1325,76 @@
             currentConfig.retention_days = parseInt(document.getElementById('retentionDays').value);
             saveConfigToServer();
             alert("Global settings saved.");
+        }
+
+        async function saveNotificationSettings() {
+            if (!currentConfig.notifications) currentConfig.notifications = {};
+            if (!currentConfig.notifications.telegram) currentConfig.notifications.telegram = {};
+            if (!currentConfig.notifications.discord) currentConfig.notifications.discord = {};
+            if (!currentConfig.smart_cleanup) currentConfig.smart_cleanup = {};
+
+            currentConfig.notifications.telegram.enabled = document.getElementById('notifTgEnabled').checked;
+            currentConfig.notifications.telegram.bot_token = document.getElementById('notifTgToken').value;
+            currentConfig.notifications.telegram.chat_id = document.getElementById('notifTgChatId').value;
+
+            currentConfig.notifications.discord.enabled = document.getElementById('notifDcEnabled').checked;
+            currentConfig.notifications.discord.webhook_url = document.getElementById('notifDcWebhook').value;
+
+            currentConfig.smart_cleanup.min_free_gb = parseInt(document.getElementById('smartMinFree').value) || 5;
+
+            await saveConfigToServer();
+            alert("Notification and storage settings saved successfully.");
+        }
+
+        async function triggerTestNotification() {
+            const btn = document.getElementById('btnTestNotif');
+            btn.innerText = "Testing..."; btn.disabled = true;
+
+            const payload = {
+                telegram: {
+                    enabled: document.getElementById('notifTgEnabled').checked,
+                    bot_token: document.getElementById('notifTgToken').value,
+                    chat_id: document.getElementById('notifTgChatId').value
+                },
+                discord: {
+                    enabled: document.getElementById('notifDcEnabled').checked,
+                    webhook_url: document.getElementById('notifDcWebhook').value
+                }
+            };
+
+            if (!payload.telegram.enabled && !payload.discord.enabled) {
+                alert("Please enable at least one notification channel (Telegram or Discord) to test.");
+                btn.innerText = "Test Notifications"; btn.disabled = false;
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/notifications/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Test notification sent successfully!");
+                } else {
+                    let errMsg = "Failed to send test notification.\n\nDetail:\n";
+                    if (data.results) {
+                        for (const [channel, result] of Object.entries(data.results)) {
+                            if (result.status === 'error') {
+                                errMsg += `- ${channel.toUpperCase()}: ${result.message}\n`;
+                            }
+                        }
+                    } else {
+                        errMsg += data.message || "Unknown error";
+                    }
+                    alert(errMsg);
+                }
+            } catch (e) {
+                alert("Request failed: " + e.message);
+            } finally {
+                btn.innerText = "Test Notifications"; btn.disabled = false;
+            }
         }
 
         const modal = document.getElementById('cameraModal');
@@ -866,8 +1562,327 @@
             finally { btn.innerText = "Update Credentials"; btn.disabled = false; }
         }
 
+        function initChart() {
+            const canvas = document.getElementById('hardwareChart');
+            if (!canvas) return; // guard in case element is missing
+            const ctx = canvas.getContext('2d');
+            
+            // Pre-fill labels and queues
+            for (let i = 0; i < maxDataPoints; i++) {
+                chartLabels.push("");
+                cpuData.push(0);
+                ramData.push(0);
+            }
+
+            hardwareChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [
+                        {
+                            label: 'CPU Usage (%)',
+                            data: cpuData,
+                            borderColor: '#06b6d4', // Cyan
+                            backgroundColor: 'rgba(6, 182, 212, 0.03)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'RAM Usage (%)',
+                            data: ramData,
+                            borderColor: '#d946ef', // Magenta
+                            backgroundColor: 'rgba(217, 70, 239, 0.03)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#9ca3af',
+                                boxWidth: 12,
+                                boxHeight: 12,
+                                font: {
+                                    family: 'Inter',
+                                    size: 11,
+                                    weight: '500'
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.03)'
+                            },
+                            ticks: {
+                                color: '#6b7280',
+                                font: {
+                                    family: 'Inter',
+                                    size: 10
+                                },
+                                stepSize: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Bind playback video listeners for scrubber sync and continuous playback
+        const playbackVideo = document.getElementById('playbackVideo');
+        if (playbackVideo) {
+            playbackVideo.addEventListener('timeupdate', (event) => {
+                const vid = event.target;
+                if (activePlayingFileIndex === -1 || selectedDateFiles.length === 0) return;
+                
+                const currentFile = selectedDateFiles[activePlayingFileIndex];
+                const absoluteSeconds = currentFile.startSeconds + vid.currentTime;
+                
+                const totalDaySeconds = 86400;
+                const percent = (absoluteSeconds / totalDaySeconds) * 100;
+                
+                const handle = document.getElementById('timelineHandle');
+                if (handle) {
+                    handle.style.left = `${Math.min(100, Math.max(0, percent))}%`;
+                }
+            });
+
+            playbackVideo.addEventListener('ended', () => {
+                if (activePlayingFileIndex !== -1 && activePlayingFileIndex < selectedDateFiles.length - 1) {
+                    playFileAtIndex(activePlayingFileIndex + 1, 0);
+                }
+            });
+        }
+
+        async function fetchStorageAnalytics() {
+            const canvas = document.getElementById('storageAnalyticsChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            try {
+                const res = await fetch('/api/system/storage_analytics');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                const labels = data.map(item => item.name);
+                const sizes = data.map(item => item.size_gb);
+                
+                const colors = ['#06b6d4', '#d946ef', '#8b5cf6', '#10b981', '#f59e0b', '#f43f5e'];
+                
+                if (storageChart) {
+                    storageChart.data.labels = labels;
+                    storageChart.data.datasets[0].data = sizes;
+                    storageChart.update();
+                } else {
+                    storageChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: sizes,
+                                backgroundColor: colors.slice(0, data.length),
+                                borderColor: 'rgba(255,255,255,0.05)',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: {
+                                        color: '#9ca3af',
+                                        boxWidth: 12,
+                                        font: {
+                                            family: 'Inter',
+                                            size: 11
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const val = context.raw;
+                                            return ` ${context.label}: ${val.toFixed(3)} GB`;
+                                        }
+                                    }
+                                }
+                            },
+                            cutout: '60%'
+                        },
+                        plugins: [{
+                            id: 'centerText',
+                            afterDraw: function(chart) {
+                                const ctx = chart.ctx;
+                                ctx.restore();
+                                
+                                const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const totalText = total.toFixed(3) + " GB";
+                                
+                                ctx.font = "600 12px Inter";
+                                ctx.textBaseline = "middle";
+                                ctx.fillStyle = "#ffffff";
+                                
+                                const chartArea = chart.chartArea;
+                                const centerX = (chartArea.left + chartArea.right) / 2;
+                                const centerY = (chartArea.top + chartArea.bottom) / 2;
+                                
+                                const textWidth = ctx.measureText(totalText).width;
+                                const textX = centerX - textWidth / 2;
+                                const textY = centerY;
+                                
+                                ctx.fillText(totalText, textX, textY);
+                                ctx.save();
+                            }
+                        }]
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading storage analytics chart:", e);
+            }
+        }
+
+        // Client-side real-time motion & simulated object detection logic
+        let prevFrame = null;
+        function detectMotion() {
+            const img = document.getElementById('liveStreamImg');
+            const canvas = document.getElementById('motionCanvas');
+            if (!img || !canvas || currentViewCamId === null || !document.getElementById('viewerModal').classList.contains('active')) {
+                prevFrame = null; // Reset frame data when modal is closed
+                return;
+            }
+            
+            // Check if active tab is live preview
+            if (!document.getElementById('tabLive').classList.contains('active')) {
+                prevFrame = null;
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            
+            // Ensure canvas inner dimensions match display size
+            if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+            }
+            
+            if (img.naturalWidth === 0) return; // Image not loaded yet
+            
+            const ow = 64;
+            const oh = 48;
+            const offscreen = document.createElement('canvas');
+            offscreen.width = ow;
+            offscreen.height = oh;
+            const oCtx = offscreen.getContext('2d');
+            
+            try {
+                oCtx.drawImage(img, 0, 0, ow, oh);
+            } catch (e) {
+                return;
+            }
+            
+            const imgData = oCtx.getImageData(0, 0, ow, oh);
+            const data = imgData.data;
+            
+            if (!prevFrame) {
+                prevFrame = data;
+                return;
+            }
+            
+            let minX = ow, minY = oh, maxX = 0, maxY = 0;
+            let diffCount = 0;
+            
+            // Core frame differencing algorithm
+            for (let y = 0; y < oh; y++) {
+                for (let x = 0; x < ow; x++) {
+                    const idx = (y * ow + x) * 4;
+                    // Check red difference
+                    const diff = Math.abs(data[idx] - prevFrame[idx]);
+                    if (diff > 35) { // Sensitivity threshold
+                        diffCount++;
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+            
+            prevFrame = data;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw box if motion is above threshold (1.2% of total pixels)
+            const threshold = (ow * oh) * 0.012;
+            if (diffCount > threshold) {
+                const scaleX = canvas.width / ow;
+                const scaleY = canvas.height / oh;
+                
+                const rx = minX * scaleX;
+                const ry = minY * scaleY;
+                const rw = (maxX - minX) * scaleX;
+                const rh = (maxY - minY) * scaleY;
+                
+                // Draw bounding box
+                ctx.strokeStyle = '#10b981'; // Emerald
+                ctx.lineWidth = 2;
+                ctx.strokeRect(rx, ry, rw, rh);
+                
+                // Draw label
+                ctx.fillStyle = '#10b981';
+                ctx.font = '600 10px Inter';
+                
+                // If the bounding box is tall, classify as Person (simulated AI check)
+                const isVertical = rh > rw * 1.1;
+                const label = isVertical ? "Person (96%)" : "Motion";
+                
+                const textWidth = ctx.measureText(label).width;
+                ctx.fillRect(rx, ry - 18, textWidth + 10, 18);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(label, rx + 5, ry - 5);
+                
+                // Motion alert banner in corner
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.85)';
+                ctx.fillRect(12, 12, 100, 20);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 9px Inter';
+                ctx.fillText("● MOTION ACTIVE", 18, 25);
+            }
+        }
+
+        // Setup Digital Zoom and Drag-Pan
+        setupZoomPan('liveStreamImg');
+        setupZoomPan('playbackVideo');
+
+        initChart();
         fetchData();
         setInterval(fetchData, 5000);
+        setInterval(detectMotion, 150); // Run motion detection at ~7 FPS
     </script>
 </body>
 </html>

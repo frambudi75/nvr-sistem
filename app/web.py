@@ -194,6 +194,30 @@ def change_password():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route("/api/notifications/test", methods=["POST"])
+@login_required
+def test_notifications_route():
+    try:
+        data = request.json
+        telegram_settings = data.get("telegram")
+        discord_settings = data.get("discord")
+        
+        from notifier import test_notification
+        results = test_notification(telegram_settings, discord_settings)
+        
+        # Check if there are failures
+        has_error = False
+        for channel, res in results.items():
+            if res.get("status") == "error":
+                has_error = True
+                
+        if has_error:
+            return jsonify({"status": "error", "results": results}), 400
+        return jsonify({"status": "success", "results": results}), 200
+    except Exception as e:
+        logger.error(f"Error testing notification: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 def generate_mjpeg_stream(rtsp_url):
     command = [
         "ffmpeg",
@@ -271,11 +295,178 @@ def list_recordings(cam_id):
         
     return jsonify(result)
 
+@app.route("/api/system/storage_analytics", methods=["GET"])
+@login_required
+def get_storage_analytics():
+    try:
+        analytics = []
+        cameras_config = {cam["id"]: cam for cam in nvr_manager.config.get("cameras", [])}
+        
+        if os.path.exists(nvr_manager.storage_path):
+            for item in os.listdir(nvr_manager.storage_path):
+                item_path = os.path.join(nvr_manager.storage_path, item)
+                if os.path.isdir(item_path):
+                    cam_id = item
+                    cam_name = cameras_config.get(cam_id, {}).get("name", cam_id)
+                    
+                    total_size = 0
+                    files_count = 0
+                    for root, _, files in os.walk(item_path):
+                        for file in files:
+                            if file.endswith(".mp4"):
+                                file_path = os.path.join(root, file)
+                                try:
+                                    total_size += os.path.getsize(file_path)
+                                    files_count += 1
+                                except:
+                                    continue
+                                    
+                    size_gb = round(total_size / (1024**3), 3)
+                    analytics.append({
+                        "id": cam_id,
+                        "name": cam_name,
+                        "size_gb": size_gb,
+                        "files_count": files_count
+                    })
+        return jsonify(analytics)
+    except Exception as e:
+        logger.error(f"Error computing storage analytics: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/recordings/<cam_id>/<filename>")
 @login_required
 def serve_recording(cam_id, filename):
     directory = os.path.join(nvr_manager.storage_path, cam_id)
     return send_from_directory(directory, filename, as_attachment=request.args.get('download') == '1')
+
+@app.route("/api/recordings/export_clip", methods=["POST"])
+@login_required
+def export_clip():
+    import time
+    import tempfile
+    from flask import send_file
+    
+    try:
+        data = request.json
+        cam_id = data.get("cam_id")
+        date = data.get("date")
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        
+        if not all([cam_id, date, start_time, end_time]):
+            return jsonify({"status": "error", "message": "Missing required fields (cam_id, date, start_time, end_time)"}), 400
+            
+        try:
+            start_parts = [int(x) for x in start_time.split(':')]
+            end_parts = [int(x) for x in end_time.split(':')]
+            start_secs = start_parts[0] * 3600 + start_parts[1] * 60 + (start_parts[2] if len(start_parts) > 2 else 0)
+            end_secs = end_parts[0] * 3600 + end_parts[1] * 60 + (end_parts[2] if len(end_parts) > 2 else 0)
+        except Exception as e:
+            return jsonify({"status": "error", "message": f"Invalid time format (HH:MM:SS): {e}"}), 400
+            
+        duration = end_secs - start_secs
+        if duration <= 0:
+            return jsonify({"status": "error", "message": "End time must be after start time"}), 400
+        if duration > 1800:
+            return jsonify({"status": "error", "message": "Max clip duration is 30 minutes"}), 400
+            
+        cam_dir = os.path.join(nvr_manager.storage_path, cam_id)
+        if not os.path.exists(cam_dir):
+            return jsonify({"status": "error", "message": "Camera recordings directory not found"}), 404
+            
+        files = glob.glob(os.path.join(cam_dir, "*.mp4"))
+        selected_file = None
+        offset = 0
+        
+        for f in files:
+            basename = os.path.basename(f)
+            if not basename.startswith(date):
+                continue
+            try:
+                time_part = basename.split('_')[1].replace('.mp4', '')
+                time_parts = [int(x) for x in time_part.split('-')]
+                file_start_secs = time_parts[0] * 3600 + time_parts[1] * 60 + time_parts[2]
+                file_end_secs = file_start_secs + nvr_manager.segment_time
+                
+                if file_start_secs <= start_secs <= file_end_secs:
+                    selected_file = f
+                    offset = start_secs - file_start_secs
+                    break
+            except:
+                continue
+                
+        if not selected_file:
+            return jsonify({"status": "error", "message": "No recording file covers the start time on this date"}), 404
+            
+        temp_dir = tempfile.gettempdir()
+        now = time.time()
+        for f in glob.glob(os.path.join(temp_dir, "clip_*.mp4")):
+            try:
+                if now - os.path.getmtime(f) > 600:
+                    os.remove(f)
+            except:
+                pass
+                
+        safe_start = start_time.replace(':', '-')
+        safe_end = end_time.replace(':', '-')
+        output_filename = f"clip_{cam_id}_{date}_{safe_start}_{safe_end}.mp4"
+        temp_output_path = os.path.join(temp_dir, output_filename)
+        
+        command = [
+            "ffmpeg", "-y",
+            "-ss", str(offset),
+            "-t", str(duration),
+            "-i", selected_file,
+            "-c", "copy",
+            "-map", "0",
+            "-loglevel", "error",
+            temp_output_path
+        ]
+        
+        logger.info(f"Exporting clip: {command}")
+        process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if process.returncode != 0:
+            err_msg = process.stderr.decode('utf-8').strip()
+            return jsonify({"status": "error", "message": f"FFmpeg cutting failed: {err_msg}"}), 500
+            
+        if not os.path.exists(temp_output_path) or os.path.getsize(temp_output_path) == 0:
+            return jsonify({"status": "error", "message": "Output clip is empty or was not created"}), 500
+            
+        return send_file(temp_output_path, as_attachment=True, download_name=output_filename, mimetype='video/mp4')
+        
+    except Exception as e:
+        logger.error(f"Error exporting clip: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+def check_and_generate_ssl_certs(cert_path, key_path):
+    if os.path.exists(cert_path) and os.path.exists(key_path):
+        return True
+    
+    logger.info("SSL certificates not found. Attempting to generate self-signed certificates...")
+    try:
+        command = [
+            "openssl", "req",
+            "-x509",
+            "-newkey", "rsa:4096",
+            "-nodes",
+            "-out", cert_path,
+            "-keyout", key_path,
+            "-days", "365",
+            "-subj", "/CN=localhost"
+        ]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            logger.info(f"Self-signed SSL certificates successfully generated: {cert_path}, {key_path}")
+            return True
+        else:
+            logger.error(f"OpenSSL failed to generate certificate. Return code: {result.returncode}. Error: {result.stderr.strip()}")
+            return False
+    except FileNotFoundError:
+        logger.warning("openssl command not found in system PATH. Cannot generate SSL certificates.")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error while generating SSL certificates: {e}")
+        return False
 
 def start_web_server(manager_instance, port=5000):
     global nvr_manager
@@ -284,5 +475,15 @@ def start_web_server(manager_instance, port=5000):
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
     
-    logger.info(f"Starting Web Dashboard on port {port}")
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    cert_path = os.path.join(app_dir, 'cert.pem')
+    key_path = os.path.join(app_dir, 'key.pem')
+    
+    ssl_context = None
+    if check_and_generate_ssl_certs(cert_path, key_path):
+        ssl_context = (cert_path, key_path)
+        logger.info(f"Starting Web Dashboard over HTTPS on port {port}")
+    else:
+        logger.warning(f"Falling back to HTTP. Starting Web Dashboard on port {port}")
+        
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, ssl_context=ssl_context)
