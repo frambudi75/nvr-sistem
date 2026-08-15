@@ -2,6 +2,7 @@ import subprocess
 import os
 import time
 import logging
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -25,31 +26,33 @@ class Recorder:
 
         logger.info(f"[{self.camera_name}] Starting recording...")
 
-        # Output pattern for segmented files: e.g. 2026-08-13_18-40-00.mp4
+        # Output pattern for segmented files: e.g. 2026-08-13/2026-08-13_18-40-00.mp4
+        now = datetime.now()
         output_pattern = os.path.join(self.cam_storage_path, "%Y-%m-%d_%H-%M-%S.mp4")
 
         # FFmpeg command to pull RTSP and split into chunks
-        # We use -c copy to copy the stream directly without re-encoding (saves CPU)
         command = [
             "ffmpeg",
-            "-rtsp_transport", "tcp", # Use TCP for better reliability over RTSP
+            "-rtsp_transport", "tcp",
             "-i", self.rtsp_url,
             "-c", "copy",
             "-f", "segment",
             "-segment_time", str(self.segment_time),
             "-segment_format", "mp4",
+            "-segment_format_options", "movflags=frag_keyframe+empty_moov",
             "-strftime", "1",
             "-reset_timestamps", "1",
-            "-loglevel", "error", # Only log errors from ffmpeg to avoid spam
+            "-loglevel", "warning",
             output_pattern
         ]
 
         try:
+            self.log_file = open(os.path.join(self.cam_storage_path, "ffmpeg.log"), "w")
             self.process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=self.log_file
             )
             logger.info(f"[{self.camera_name}] FFmpeg process started with PID {self.process.pid}")
         except Exception as e:
@@ -72,6 +75,11 @@ class Recorder:
                 except Exception:
                     self.process.kill()
             self.process = None
+            if hasattr(self, 'log_file') and self.log_file:
+                try:
+                    self.log_file.close()
+                except:
+                    pass
             logger.info(f"[{self.camera_name}] Recording stopped.")
 
     def check_health(self):

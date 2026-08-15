@@ -3,10 +3,11 @@ services:
     build: .
     container_name: python-nvr
     restart: unless-stopped
+    network_mode: "host"
     volumes:
       - ./recordings:/recordings
       - ./config.json:/config.json
     environment:
       - TZ=Asia/Jakarta # Adjust timezone as needed
-    ports:
-      - "5000:5000"
+    # ports:
+    #   - "5000:5000"

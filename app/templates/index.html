@@ -430,6 +430,7 @@
                 <svg viewBox="0 0 24 24"><path d="M4 13h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1zm0 8h6a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1zm10-12h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1zm0 12h6a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1z"/></svg>
                 Dashboard
             </div>
+            {% if role == 'admin' %}
             <div class="nav-tab" onclick="switchMainTab('system')">
                 <svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-4 6h-2v8h-2v-3H9v3H7v-5h8v-3z"/></svg>
                 System Monitor
@@ -446,13 +447,16 @@
                 <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
                 System Logs
             </div>
+            {% endif %}
         </div>
 
         <!-- PAGE 1: Dashboard -->
         <div id="page-dashboard" class="page active">
             <div style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
                 <button class="secondary" onclick="openGridView()">Grid View</button>
+                {% if role == 'admin' %}
                 <button onclick="openAddCameraModal()">+ Add Camera</button>
+                {% endif %}
             </div>
 
             <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
@@ -634,6 +638,24 @@
                 <div class="live-stream-box">
                     <img id="liveStreamImg" src="" alt="Loading stream..." onerror="this.onerror=null; this.alt='Stream unavailable or disconnected'; this.src='';">
                     <canvas id="motionCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
+                    
+                    <!-- Snapshot Button -->
+                    <button onclick="takeSnapshot()" style="position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.7); padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); z-index: 10; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Ambil Foto Cepat">
+                        <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
+                        Snapshot
+                    </button>
+                    <!-- PTZ Controls (Overlay) -->
+                    <div id="ptzControls" style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 0.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); z-index: 10; display: none; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem;">
+                        <div></div>
+                        <button class="secondary" style="padding: 0.25rem 0.5rem; font-size: 1rem;" onmousedown="sendPtz('up')" onmouseup="sendPtz('stop')" onmouseleave="sendPtz('stop')">⬆️</button>
+                        <div></div>
+                        <button class="secondary" style="padding: 0.25rem 0.5rem; font-size: 1rem;" onmousedown="sendPtz('left')" onmouseup="sendPtz('stop')" onmouseleave="sendPtz('stop')">⬅️</button>
+                        <button class="secondary" style="padding: 0.25rem 0.5rem; font-size: 1rem;" onclick="sendPtz('stop')">⏹</button>
+                        <button class="secondary" style="padding: 0.25rem 0.5rem; font-size: 1rem;" onmousedown="sendPtz('right')" onmouseup="sendPtz('stop')" onmouseleave="sendPtz('stop')">➡️</button>
+                        <div></div>
+                        <button class="secondary" style="padding: 0.25rem 0.5rem; font-size: 1rem;" onmousedown="sendPtz('down')" onmouseup="sendPtz('stop')" onmouseleave="sendPtz('stop')">⬇️</button>
+                        <div></div>
+                    </div>
                 </div>
             </div>
             <div class="viewer-container" id="viewPlayback">
@@ -645,6 +667,11 @@
                                 <source src="" type="video/mp4">
                             </video>
                             <div id="noVideoMsg" style="position: absolute; color: var(--text-muted);">Select a date and click on the timeline to play</div>
+                            <div id="videoErrorOverlay" style="display: none; position: absolute; background: rgba(0,0,0,0.85); width: 100%; height: 100%; top: 0; left: 0; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 2rem; box-sizing: border-box; z-index: 10;">
+                                <svg style="width: 48px; height: 48px; fill: var(--danger); margin-bottom: 1rem;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                                <h3 style="margin: 0 0 0.5rem 0; color: white; font-size: 1.1rem;">Playback Failed</h3>
+                                <p id="videoErrorText" style="color: var(--text-muted); font-size: 0.9rem; margin: 0; line-height: 1.5;"></p>
+                            </div>
                         </div>
                         
                         <!-- Timeline Scrubber Container -->
@@ -680,6 +707,10 @@
                                                 <button class="secondary" style="padding: 0 0.5rem;" onclick="setClipTime('end')" title="Use current video time">📍 Use Current</button>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; margin-bottom: 0;">
+                                        <input type="checkbox" id="clipTimeLapse" style="width: auto;">
+                                        <label style="margin: 0; cursor: pointer; color: var(--primary);" for="clipTimeLapse">⚡ Fast-Forward Time-Lapse (20x Speed)</label>
                                     </div>
                                     <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
                                         <button class="secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="toggleExportPanel()">Cancel</button>
@@ -746,6 +777,33 @@
                 <label style="margin: 0; cursor: pointer;" for="camEnabled">Enabled</label>
             </div>
             
+            <!-- Advanced Options -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 1.5rem; padding-top: 1rem;">
+                <h3 style="margin-top: 0; font-size: 1rem; color: var(--primary);">Advanced Settings</h3>
+                
+                <!-- Storage Quota -->
+                <div class="form-group">
+                    <label>Storage Quota (GB) - <i>0 for unlimited</i></label>
+                    <input type="number" id="camQuota" placeholder="e.g. 20" value="0" step="0.1">
+                </div>
+
+                <!-- Recording Schedule -->
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="camSchedEnabled" style="width: auto;" onchange="toggleSchedFields()">
+                    <label style="margin: 0; cursor: pointer;" for="camSchedEnabled">Enable Recording Schedule</label>
+                </div>
+                <div class="grid-2" id="camSchedFields" style="display: none;">
+                    <div class="form-group">
+                        <label>Start Time (HH:MM)</label>
+                        <input type="time" id="camSchedStart" value="18:00">
+                    </div>
+                    <div class="form-group">
+                        <label>End Time (HH:MM)</label>
+                        <input type="time" id="camSchedEnd" value="06:00">
+                    </div>
+                </div>
+            </div>
+            
             <div class="actions">
                 <button style="background: transparent; border: 1px solid var(--border);" onclick="closeModal()">Cancel</button>
                 <button class="secondary" onclick="testCameraConnection()" id="testBtn">Test Connection</button>
@@ -755,6 +813,7 @@
     </div>
 
     <script>
+        const userRole = "{{ role }}";
         let currentConfig = { cameras: [] };
         let currentStatus = [];
         let currentViewCamId = null;
@@ -908,8 +967,10 @@
                     <div class="url-truncate" title="${cam.rtsp_url}">${detailText}</div>
                     <div class="cam-actions">
                         <button class="secondary" onclick="openViewer('${cam.id}', '${cam.name}')">View</button>
+                        ${userRole === 'admin' ? `
                         <button onclick="editCamera('${cam.id}')">Edit</button>
                         <button class="danger" onclick="deleteCamera('${cam.id}')">Delete</button>
+                        ` : ''}
                     </div>
                 `;
                 grid.appendChild(card);
@@ -998,6 +1059,12 @@
                 document.getElementById('viewLive').classList.add('active');
                 document.getElementById('liveStreamImg').src = `/api/stream/${currentViewCamId}?t=${new Date().getTime()}`;
                 document.getElementById('playbackVideo').pause();
+                
+                const cam = currentConfig.cameras.find(c => c.id === currentViewCamId);
+                const ptz = document.getElementById('ptzControls');
+                if (ptz) {
+                    ptz.style.display = (cam && cam.brand === 'hikvision') ? 'grid' : 'none';
+                }
             } else {
                 document.getElementById('tabPlayback').classList.add('active');
                 document.getElementById('viewPlayback').classList.add('active');
@@ -1063,6 +1130,10 @@
             selectedDateFiles.sort((a, b) => a.startSeconds - b.startSeconds);
             renderTimelineTracks();
             document.getElementById('timelineWrapper').style.display = 'block';
+            
+            if (selectedDateFiles.length > 0) {
+                playFileAtIndex(0, 0);
+            }
         }
 
         function renderTimelineTracks() {
@@ -1142,13 +1213,32 @@
             const vid = document.getElementById('playbackVideo');
             
             document.getElementById('noVideoMsg').style.display = 'none';
+            document.getElementById('videoErrorOverlay').style.display = 'none';
             vid.src = file.path;
             vid.load();
             
             vid.onloadedmetadata = () => {
                 vid.currentTime = offsetSeconds;
-                vid.play();
+                vid.play().catch(e => console.error("Play prevented:", e));
                 vid.onloadedmetadata = null;
+            };
+            
+            vid.onerror = () => {
+                let errStr = "Unknown error";
+                let errDetails = "";
+                if (vid.error) {
+                    switch (vid.error.code) {
+                        case 1: errStr = "Fetch aborted"; break;
+                        case 2: errStr = "Network error"; break;
+                        case 3: errStr = "Corrupted file"; break;
+                        case 4: 
+                            errStr = "Format/Codec not supported"; 
+                            errDetails = "<br><br><b>Note:</b> This is common for old files recorded before you turned off H.264+ on the camera. New recordings will play normally.";
+                            break;
+                    }
+                }
+                document.getElementById('videoErrorText').innerHTML = `<strong>${file.time} Segment</strong><br>${errStr}${errDetails}`;
+                document.getElementById('videoErrorOverlay').style.display = 'flex';
             };
         }
 
@@ -1297,7 +1387,8 @@
                 cam_id: currentViewCamId,
                 date: activePlayingDate,
                 start_time: start,
-                end_time: end
+                end_time: end,
+                time_lapse: document.getElementById('clipTimeLapse').checked
             };
             
             try {
@@ -1438,6 +1529,10 @@
             }
         }
 
+        function toggleSchedFields() {
+            document.getElementById('camSchedFields').style.display = document.getElementById('camSchedEnabled').checked ? 'grid' : 'none';
+        }
+
         function openAddCameraModal() {
             document.getElementById('modalTitle').innerText = 'Add Camera';
             document.getElementById('camIdInput').value = '';
@@ -1450,7 +1545,12 @@
             document.getElementById('camPort').value = '554';
             document.getElementById('camUrl').value = '';
             document.getElementById('camEnabled').checked = true;
+            document.getElementById('camQuota').value = '0';
+            document.getElementById('camSchedEnabled').checked = false;
+            document.getElementById('camSchedStart').value = '18:00';
+            document.getElementById('camSchedEnd').value = '06:00';
             toggleFormFields();
+            toggleSchedFields();
             editingIndex = -1;
             modal.classList.add('active');
         }
@@ -1470,7 +1570,15 @@
             document.getElementById('camPort').value = cam.port || '554';
             document.getElementById('camUrl').value = cam.rtsp_url || '';
             document.getElementById('camEnabled').checked = cam.enabled !== false;
+            document.getElementById('camQuota').value = cam.max_quota_gb || '0';
+            
+            const sched = cam.schedule || { enabled: false, start: '18:00', end: '06:00' };
+            document.getElementById('camSchedEnabled').checked = sched.enabled;
+            document.getElementById('camSchedStart').value = sched.start || '18:00';
+            document.getElementById('camSchedEnd').value = sched.end || '06:00';
+            
             toggleFormFields();
+            toggleSchedFields();
             editingIndex = index;
             modal.classList.add('active');
         }
@@ -1519,7 +1627,18 @@
             if(!id || !name) { alert("Fill Camera ID and Name."); return; }
             const rtsp_url = buildRtspUrl();
             if (!rtsp_url) { alert("Fill required RTSP URL / IP Address fields."); return; }
+            
             let camData = { id, name, brand, enabled, rtsp_url };
+            
+            const quota = parseFloat(document.getElementById('camQuota').value) || 0;
+            if (quota > 0) camData.max_quota_gb = quota;
+            
+            camData.schedule = {
+                enabled: document.getElementById('camSchedEnabled').checked,
+                start: document.getElementById('camSchedStart').value,
+                end: document.getElementById('camSchedEnd').value
+            };
+            
             if (brand !== 'custom') {
                 camData.ip = document.getElementById('camIp').value;
                 camData.username = document.getElementById('camUser').value;
@@ -1905,6 +2024,47 @@
         // Setup Digital Zoom and Drag-Pan
         setupZoomPan('liveStreamImg');
         setupZoomPan('playbackVideo');
+
+        // Snapshot function
+        function takeSnapshot() {
+            const img = document.getElementById('liveStreamImg');
+            if (!img || !img.src || img.naturalWidth === 0) {
+                alert("Kamera belum memuat gambar.");
+                return;
+            }
+            
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                
+                const d = new Date();
+                const timeStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}-${String(d.getMinutes()).padStart(2,'0')}`;
+                a.download = `Snapshot_${currentViewCamId}_${timeStr}.jpg`;
+                
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (e) {
+                alert("Gagal mengambil snapshot. Pastikan kamera sedang tayang.");
+            }
+        }
+
+        // PTZ function
+        async function sendPtz(direction) {
+            if (!currentViewCamId) return;
+            try {
+                await fetch(`/api/ptz/${currentViewCamId}/${direction}`, {method: 'POST'});
+            } catch (e) {
+                console.error("PTZ failed", e);
+            }
+        }
 
         initChart();
         fetchData();

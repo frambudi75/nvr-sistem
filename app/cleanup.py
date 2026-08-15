@@ -21,8 +21,8 @@ class Cleaner:
         deleted_count = 0
         freed_space = 0
 
-        # Walk through all directories inside storage_path
-        for root, dirs, files in os.walk(self.storage_path):
+        # Walk through all directories inside storage_path (bottom-up to allow directory deletion)
+        for root, dirs, files in os.walk(self.storage_path, topdown=False):
             for file in files:
                 if not file.endswith(".mp4"):
                     continue
@@ -41,6 +41,14 @@ class Cleaner:
                         logger.debug(f"Deleted old file: {file_path}")
                 except Exception as e:
                     logger.error(f"Error checking/deleting file {file_path}: {e}")
+                    
+            # Remove empty directories after file cleanup
+            if not os.listdir(root):
+                try:
+                    os.rmdir(root)
+                    logger.debug(f"Removed empty directory: {root}")
+                except Exception:
+                    pass
         
         if deleted_count > 0:
             freed_mb = freed_space / (1024 * 1024)

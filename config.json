@@ -23,6 +23,12 @@
       "enabled": false
     }
   },
+  "auth": {
+    "admin_user": "admin",
+    "admin_pass": "admin",
+    "viewer_user": "viewer",
+    "viewer_pass": "viewer"
+  },
   "retention_days": 7,
   "segment_time": 900,
   "smart_cleanup": {

@@ -24,6 +24,15 @@ def login_required(f):
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in') or session.get('role') != 'admin':
+            if request.path.startswith('/api/'):
+                return jsonify({"status": "error", "message": "Admin privileges required"}), 403
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -31,12 +40,24 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
         
-        # Read credentials from config or use default admin/admin
-        valid_user = nvr_manager.config.get("admin_user", "admin")
-        valid_pass = nvr_manager.config.get("admin_pass", "admin")
+        # Read credentials from config auth block or fallback
+        auth_config = nvr_manager.config.get("auth", {})
         
-        if username == valid_user and password == valid_pass:
+        # Check Admin
+        admin_user = auth_config.get("admin_user", nvr_manager.config.get("admin_user", "admin"))
+        admin_pass = auth_config.get("admin_pass", nvr_manager.config.get("admin_pass", "admin"))
+        
+        # Check Viewer
+        viewer_user = auth_config.get("viewer_user", "viewer")
+        viewer_pass = auth_config.get("viewer_pass", "viewer")
+        
+        if username == admin_user and password == admin_pass:
             session['logged_in'] = True
+            session['role'] = 'admin'
+            return redirect(url_for('index'))
+        elif username == viewer_user and password == viewer_pass:
+            session['logged_in'] = True
+            session['role'] = 'viewer'
             return redirect(url_for('index'))
         else:
             return render_template("login.html", error="Invalid credentials")
@@ -52,7 +73,8 @@ def logout():
 @app.route("/")
 @login_required
 def index():
-    return render_template("index.html", config=nvr_manager.config)
+    user_role = session.get('role', 'viewer')
+    return render_template("index.html", config=nvr_manager.config, role=user_role)
 
 @app.route("/api/config", methods=["GET"])
 @login_required
@@ -60,7 +82,7 @@ def get_config():
     return jsonify(nvr_manager.config)
 
 @app.route("/api/config", methods=["POST"])
-@login_required
+@admin_required
 def update_config():
     try:
         new_config = request.json
@@ -78,7 +100,7 @@ def update_config():
         return jsonify({"status": "error", "message": str(e)}), 400
 
 @app.route("/api/test_camera", methods=["POST"])
-@login_required
+@admin_required
 def test_camera():
     rtsp_url = request.json.get("rtsp_url")
     if not rtsp_url:
@@ -147,7 +169,7 @@ def get_sysinfo():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route("/api/system/restart", methods=["POST"])
-@login_required
+@admin_required
 def restart_engine():
     try:
         # Just reload config and sync cameras to soft-restart recording streams
@@ -174,7 +196,7 @@ def get_logs():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route("/api/users/change_password", methods=["POST"])
-@login_required
+@admin_required
 def change_password():
     try:
         data = request.json
@@ -195,7 +217,7 @@ def change_password():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route("/api/notifications/test", methods=["POST"])
-@login_required
+@admin_required
 def test_notifications_route():
     try:
         data = request.json
@@ -249,6 +271,71 @@ def generate_mjpeg_stream(rtsp_url):
     finally:
         process.kill()
 
+@app.route("/api/ptz/<cam_id>/<direction>", methods=["POST"])
+@login_required
+def ptz_control(cam_id, direction):
+    import urllib.request
+    import urllib.error
+    import base64
+    
+    cameras_config = {cam["id"]: cam for cam in nvr_manager.config.get("cameras", [])}
+    if cam_id not in cameras_config:
+        return jsonify({"status": "error", "message": "Camera not found"}), 404
+        
+    cam = cameras_config[cam_id]
+    brand = cam.get("brand", "generic")
+    
+    if brand != "hikvision":
+        return jsonify({"status": "error", "message": "PTZ currently only supported for Hikvision via ISAPI in this version."}), 400
+        
+    ip = cam.get("ip")
+    user = cam.get("username")
+    password = cam.get("password")
+    
+    if not ip or not user or not password:
+        return jsonify({"status": "error", "message": "Camera IP, Username, or Password missing"}), 400
+        
+    # Map direction to ISAPI PTZ continuous move values (pan, tilt)
+    # Range is -100 to 100.
+    ptz_map = {
+        "up": (0, 60),
+        "down": (0, -60),
+        "left": (-60, 0),
+        "right": (60, 0),
+        "stop": (0, 0)
+    }
+    
+    if direction not in ptz_map:
+        return jsonify({"status": "error", "message": "Invalid direction"}), 400
+        
+    pan, tilt = ptz_map[direction]
+    
+    xml_data = f"""<?xml version="1.0" encoding="UTF-8"?>
+<PTZData version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">
+<pan>{pan}</pan>
+<tilt>{tilt}</tilt>
+</PTZData>"""
+
+    url = f"http://{ip}/ISAPI/PTZCtrl/channels/1/continuous"
+    req = urllib.request.Request(url, data=xml_data.encode('utf-8'), method='PUT')
+    
+    auth_b64 = base64.b64encode(f"{user}:{password}".encode('utf-8')).decode('utf-8')
+    req.add_header("Authorization", f"Basic {auth_b64}")
+    req.add_header("Content-Type", "application/xml")
+    
+    try:
+        response = urllib.request.urlopen(req, timeout=3)
+        if response.getcode() == 200:
+            return jsonify({"status": "success"})
+        else:
+            return jsonify({"status": "error", "message": f"HTTP {response.getcode()}"}), 500
+    except urllib.error.HTTPError as e:
+        # Hikvision may require Digest Auth, which is complex for urllib. 
+        # But some allow Basic. If it fails, we just return error.
+        return jsonify({"status": "error", "message": f"Auth or protocol error: {e.code}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/api/stream/<cam_id>")
 @login_required
 def stream_camera(cam_id):
@@ -275,16 +362,31 @@ def list_recordings(cam_id):
     dates_map = {}
     for f in files:
         basename = os.path.basename(f)
+        date_str = os.path.basename(os.path.dirname(f))
+        
+        # Fallback if it's not in a date folder
+        if "-" not in date_str or len(date_str) != 10:
+            try:
+                date_str = basename.split('_')[0]
+            except:
+                continue
+                
         try:
-            date_str = basename.split('_')[0]
             time_str = basename.split('_')[1].replace('.mp4', '').replace('-', ':')
             
             if date_str not in dates_map:
                 dates_map[date_str] = []
+            
+            # Subpath for URL
+            if os.path.basename(os.path.dirname(f)) == date_str:
+                subpath = f"{date_str}/{basename}"
+            else:
+                subpath = basename
+            
             dates_map[date_str].append({
                 "time": time_str,
                 "filename": basename,
-                "path": f"/recordings/{cam_id}/{basename}"
+                "path": f"/recordings/{cam_id}/{subpath}"
             })
         except:
             continue
@@ -333,7 +435,7 @@ def get_storage_analytics():
         logger.error(f"Error computing storage analytics: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route("/recordings/<cam_id>/<filename>")
+@app.route("/recordings/<cam_id>/<path:filename>")
 @login_required
 def serve_recording(cam_id, filename):
     directory = os.path.join(nvr_manager.storage_path, cam_id)
@@ -353,6 +455,8 @@ def export_clip():
         start_time = data.get("start_time")
         end_time = data.get("end_time")
         
+        time_lapse = data.get("time_lapse", False)
+        
         if not all([cam_id, date, start_time, end_time]):
             return jsonify({"status": "error", "message": "Missing required fields (cam_id, date, start_time, end_time)"}), 400
             
@@ -367,8 +471,11 @@ def export_clip():
         duration = end_secs - start_secs
         if duration <= 0:
             return jsonify({"status": "error", "message": "End time must be after start time"}), 400
-        if duration > 1800:
-            return jsonify({"status": "error", "message": "Max clip duration is 30 minutes"}), 400
+        
+        # Extended limit for time-lapse
+        max_duration = 10800 if time_lapse else 1800
+        if duration > max_duration:
+            return jsonify({"status": "error", "message": f"Max clip duration is {int(max_duration/60)} minutes"}), 400
             
         cam_dir = os.path.join(nvr_manager.storage_path, cam_id)
         if not os.path.exists(cam_dir):
@@ -412,16 +519,28 @@ def export_clip():
         output_filename = f"clip_{cam_id}_{date}_{safe_start}_{safe_end}.mp4"
         temp_output_path = os.path.join(temp_dir, output_filename)
         
-        command = [
-            "ffmpeg", "-y",
-            "-ss", str(offset),
-            "-t", str(duration),
-            "-i", selected_file,
-            "-c", "copy",
-            "-map", "0",
-            "-loglevel", "error",
-            temp_output_path
-        ]
+        if time_lapse:
+            command = [
+                "ffmpeg", "-y",
+                "-ss", str(offset),
+                "-t", str(duration),
+                "-i", selected_file,
+                "-filter:v", "setpts=0.05*PTS",
+                "-an",
+                "-loglevel", "error",
+                temp_output_path
+            ]
+        else:
+            command = [
+                "ffmpeg", "-y",
+                "-ss", str(offset),
+                "-t", str(duration),
+                "-i", selected_file,
+                "-c", "copy",
+                "-map", "0",
+                "-loglevel", "error",
+                temp_output_path
+            ]
         
         logger.info(f"Exporting clip: {command}")
         process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
