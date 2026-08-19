@@ -186,10 +186,17 @@ def get_logs():
         if not os.path.exists(log_path):
             return jsonify({"logs": ["Log file not found."]})
             
+        # Noise patterns to filter out from display
+        noise_patterns = ['werkzeug', 'BrokenPipeError', 'ssl.SSLError', 'UNEXPECTED_EOF', 'Broken pipe', '_sslobj']
+        
         with open(log_path, 'r') as f:
-            # Read last 100 lines
             lines = f.readlines()
-            logs = [line.strip() for line in lines[-100:]]
+            logs = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped and not any(p in stripped for p in noise_patterns):
+                    logs.append(stripped)
+            logs = logs[-100:]
             
         return jsonify({"logs": logs})
     except Exception as e:
@@ -441,6 +448,47 @@ def serve_recording(cam_id, filename):
     directory = os.path.join(nvr_manager.storage_path, cam_id)
     return send_from_directory(directory, filename, as_attachment=request.args.get('download') == '1')
 
+@app.route("/api/playback/transcode/<cam_id>/<path:filename>")
+@login_required
+def transcode_playback(cam_id, filename):
+    """
+    Server-side FFmpeg transcoding proxy for H.264+/H.265 videos.
+    Converts incompatible codec to standard H.264 baseline on-the-fly
+    and streams the result to the browser as a playable MP4.
+    """
+    filepath = os.path.join(nvr_manager.storage_path, cam_id, filename)
+    if not os.path.exists(filepath):
+        return "File not found", 404
+
+    def generate():
+        command = [
+            "ffmpeg",
+            "-i", filepath,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "23",
+            "-profile:v", "baseline",
+            "-level", "3.1",
+            "-pix_fmt", "yuv420p",
+            "-an",  # skip audio (CCTV biasanya tidak punya audio)
+            "-movflags", "frag_keyframe+empty_moov+faststart",
+            "-f", "mp4",
+            "-loglevel", "error",
+            "pipe:1"
+        ]
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            while True:
+                chunk = process.stdout.read(65536)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            process.kill()
+            process.wait()
+
+    return Response(generate(), mimetype='video/mp4')
+
 @app.route("/api/recordings/export_clip", methods=["POST"])
 @login_required
 def export_clip():
@@ -594,15 +642,5 @@ def start_web_server(manager_instance, port=5000):
     log = logging.getLogger('werkzeug')
     log.setLevel(logging.ERROR)
     
-    app_dir = os.path.dirname(os.path.abspath(__file__))
-    cert_path = os.path.join(app_dir, 'cert.pem')
-    key_path = os.path.join(app_dir, 'key.pem')
-    
-    ssl_context = None
-    if check_and_generate_ssl_certs(cert_path, key_path):
-        ssl_context = (cert_path, key_path)
-        logger.info(f"Starting Web Dashboard over HTTPS on port {port}")
-    else:
-        logger.warning(f"Falling back to HTTP. Starting Web Dashboard on port {port}")
-        
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False, ssl_context=ssl_context)
+    logger.info(f"Starting Web Dashboard on port {port} (HTTP)")
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

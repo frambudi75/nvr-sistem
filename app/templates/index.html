@@ -1214,6 +1214,9 @@
             
             document.getElementById('noVideoMsg').style.display = 'none';
             document.getElementById('videoErrorOverlay').style.display = 'none';
+            
+            // Reset transcoding flag
+            vid._isTranscoding = false;
             vid.src = file.path;
             vid.load();
             
@@ -1224,20 +1227,46 @@
             };
             
             vid.onerror = () => {
+                if (vid.error && vid.error.code === 4 && !vid._isTranscoding) {
+                    // Codec not supported — auto-fallback to server-side transcoding
+                    vid._isTranscoding = true;
+                    
+                    // Show transcoding spinner
+                    document.getElementById('videoErrorText').innerHTML = `<strong>${file.time} Segment</strong><br>Codec tidak didukung browser. Sedang di-transcode oleh server...<br><br><div style="display:inline-block;width:24px;height:24px;border:3px solid rgba(255,255,255,0.15);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>`;
+                    document.getElementById('videoErrorOverlay').style.display = 'flex';
+                    
+                    // Build transcode URL from original path: /recordings/cam01/file.mp4 -> /api/playback/transcode/cam01/file.mp4
+                    const transcodePath = file.path.replace('/recordings/', '/api/playback/transcode/');
+                    
+                    // Small delay to let spinner render, then switch source
+                    setTimeout(() => {
+                        vid.onerror = () => {
+                            // Even transcoded version failed — show final error
+                            document.getElementById('videoErrorText').innerHTML = `<strong>${file.time} Segment</strong><br>Transcode gagal. File mungkin rusak atau kosong.`;
+                            document.getElementById('videoErrorOverlay').style.display = 'flex';
+                        };
+                        vid.onloadedmetadata = () => {
+                            document.getElementById('videoErrorOverlay').style.display = 'none';
+                            vid.currentTime = offsetSeconds;
+                            vid.play().catch(e => console.error("Play prevented:", e));
+                            vid.onloadedmetadata = null;
+                        };
+                        vid.src = transcodePath;
+                        vid.load();
+                    }, 300);
+                    return;
+                }
+                
                 let errStr = "Unknown error";
-                let errDetails = "";
                 if (vid.error) {
                     switch (vid.error.code) {
                         case 1: errStr = "Fetch aborted"; break;
                         case 2: errStr = "Network error"; break;
-                        case 3: errStr = "Corrupted file"; break;
-                        case 4: 
-                            errStr = "Format/Codec not supported"; 
-                            errDetails = "<br><br><b>Note:</b> This is common for old files recorded before you turned off H.264+ on the camera. New recordings will play normally.";
-                            break;
+                        case 3: errStr = "File rusak / corrupted"; break;
+                        case 4: errStr = "Transcode gagal"; break;
                     }
                 }
-                document.getElementById('videoErrorText').innerHTML = `<strong>${file.time} Segment</strong><br>${errStr}${errDetails}`;
+                document.getElementById('videoErrorText').innerHTML = `<strong>${file.time} Segment</strong><br>${errStr}`;
                 document.getElementById('videoErrorOverlay').style.display = 'flex';
             };
         }

@@ -42,25 +42,55 @@ class NVRManager:
         
         self.load_config()
 
+    @staticmethod
     def get_default_config_path():
-        # Defaults to parent directory of the 'app' folder
-        return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config.json')
+        # 1. Check persistent volume first
+        if os.path.exists("/recordings/config.json"):
+            return "/recordings/config.json"
+            
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        local_persistent = os.path.join(os.path.dirname(app_dir), 'recordings', 'config.json')
+        if os.path.exists(local_persistent):
+            return local_persistent
+
+        # 2. Check root config.json
+        root_config = os.path.join(os.path.dirname(app_dir), 'config.json')
+        if os.path.exists(root_config):
+            return root_config
+
+        return '/config.json'
 
     def load_config(self):
         try:
             with open(self.config_path, 'r') as f:
                 self.config = json.load(f)
-                self.storage_path = self.config.get("storage_path", os.path.join(os.path.dirname(self.config_path), "recordings"))
-                # On Windows, if storage_path is set to an absolute-like Linux path (e.g. /recordings),
-                # map it to a relative workspace folder so files are written and served inside the project directory.
-                if os.name == 'nt' and (self.storage_path.startswith('/') or self.storage_path.startswith('\\')):
-                    self.storage_path = os.path.join(os.path.dirname(self.config_path), self.storage_path.lstrip('/\\'))
-                self.segment_time = self.config.get("segment_time", 900)
-                os.makedirs(self.storage_path, exist_ok=True)
-                return True
+                
+            self.storage_path = self.config.get("storage_path", os.path.join(os.path.dirname(self.config_path), "recordings"))
+            # On Windows, map /recordings to relative folder
+            if os.name == 'nt' and (self.storage_path.startswith('/') or self.storage_path.startswith('\\')):
+                self.storage_path = os.path.join(os.path.dirname(self.config_path), self.storage_path.lstrip('/\\'))
+            self.segment_time = self.config.get("segment_time", 900)
+            os.makedirs(self.storage_path, exist_ok=True)
+
+            # Auto-persist: ensure active config resides inside storage_path (persistent volume)
+            persistent_config = os.path.join(self.storage_path, "config.json")
+            if os.path.abspath(self.config_path) != os.path.abspath(persistent_config):
+                if not os.path.exists(persistent_config):
+                    try:
+                        with open(persistent_config, 'w') as pf:
+                            json.dump(self.config, pf, indent=2)
+                        logger.info(f"Auto-migrated config to persistent storage: {persistent_config}")
+                    except Exception as pe:
+                        logger.warning(f"Could not create persistent config: {pe}")
+                if os.path.exists(persistent_config):
+                    self.config_path = persistent_config
+                    with open(self.config_path, 'r') as f:
+                        self.config = json.load(f)
+                    logger.info(f"Using persistent config: {self.config_path}")
+
+            return True
         except Exception as e:
             logger.error(f"Failed to load config from {self.config_path}: {e}")
-            # Initialize empty config to not crash completely
             self.config = {"cameras": []}
             return False
 
@@ -291,8 +321,11 @@ def main():
 
     try:
         while True:
-            nvr.sync_cameras()
-            nvr.monitor_health()
+            try:
+                nvr.sync_cameras()
+                nvr.monitor_health()
+            except Exception as e:
+                logger.error(f"Error in main loop iteration: {e}", exc_info=True)
             time.sleep(10)
     except KeyboardInterrupt:
         logger.info("Received exit signal. Shutting down...")

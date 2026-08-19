@@ -18,16 +18,53 @@ class Recorder:
         
         self.segment_time = segment_time
         self.process = None
+        self.log_file = None
+
+    def _cleanup_process(self):
+        """Safely reap any old/zombie FFmpeg process and close log handles."""
+        if self.process is not None:
+            try:
+                exit_code = self.process.poll()
+                if exit_code is not None:
+                    # Process already dead — reap it via wait() to prevent zombie
+                    try:
+                        self.process.wait(timeout=2)
+                    except Exception:
+                        pass
+                else:
+                    # Still running — kill it first
+                    try:
+                        self.process.terminate()
+                        self.process.wait(timeout=3)
+                    except Exception:
+                        try:
+                            self.process.kill()
+                            self.process.wait(timeout=2)
+                        except Exception:
+                            pass
+            except Exception as e:
+                logger.warning(f"[{self.camera_name}] Cleanup error: {e}")
+            finally:
+                self.process = None
+
+        if self.log_file is not None:
+            try:
+                self.log_file.close()
+            except Exception:
+                pass
+            self.log_file = None
 
     def start(self):
         if not self.rtsp_url:
             logger.error(f"[{self.camera_name}] No RTSP URL provided.")
             return
 
+        # Always clean up old process/handles before starting a new one
+        self._cleanup_process()
+
         logger.info(f"[{self.camera_name}] Starting recording...")
 
-        # Output pattern for segmented files: e.g. 2026-08-13/2026-08-13_18-40-00.mp4
-        now = datetime.now()
+        # Output pattern for segmented files: e.g. 2026-08-13_18-40-00.mp4
         output_pattern = os.path.join(self.cam_storage_path, "%Y-%m-%d_%H-%M-%S.mp4")
 
         # FFmpeg command to pull RTSP and split into chunks
@@ -57,13 +94,13 @@ class Recorder:
             logger.info(f"[{self.camera_name}] FFmpeg process started with PID {self.process.pid}")
         except Exception as e:
             logger.error(f"[{self.camera_name}] Failed to start FFmpeg: {e}")
+            self._cleanup_process()
 
     def stop(self):
         if self.process:
             logger.info(f"[{self.camera_name}] Stopping recording...")
             try:
                 if self.process.stdin:
-                    # Write 'q' to stdin to tell ffmpeg to stop and close output files gracefully
                     self.process.stdin.write(b'q\n')
                     self.process.stdin.flush()
                 self.process.wait(timeout=5)
@@ -73,13 +110,18 @@ class Recorder:
                     self.process.terminate()
                     self.process.wait(timeout=3)
                 except Exception:
-                    self.process.kill()
+                    try:
+                        self.process.kill()
+                        self.process.wait(timeout=2)
+                    except Exception:
+                        pass
             self.process = None
-            if hasattr(self, 'log_file') and self.log_file:
+            if self.log_file:
                 try:
                     self.log_file.close()
-                except:
+                except Exception:
                     pass
+                self.log_file = None
             logger.info(f"[{self.camera_name}] Recording stopped.")
 
     def check_health(self):
@@ -87,9 +129,10 @@ class Recorder:
         if self.process is None:
             return False
         
-        # poll() returns None if process is running, otherwise exit code
-        if self.process.poll() is not None:
-            logger.warning(f"[{self.camera_name}] FFmpeg process died unexpectedly. Exit code: {self.process.poll()}")
-            self.process = None
+        exit_code = self.process.poll()
+        if exit_code is not None:
+            logger.warning(f"[{self.camera_name}] FFmpeg process died unexpectedly. Exit code: {exit_code}")
+            # Reap zombie via wait() and cleanup handles
+            self._cleanup_process()
             return False
         return True
