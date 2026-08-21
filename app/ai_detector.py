@@ -10,6 +10,7 @@ logger = logging.getLogger("NVR-AI")
 
 class AIDetector:
     def __init__(self, camera_config, storage_path, nvr_manager):
+        self.camera_config = camera_config
         self.camera_id = camera_config.get('id')
         self.camera_name = camera_config.get('name')
         self.rtsp_url = camera_config.get('rtsp_url')

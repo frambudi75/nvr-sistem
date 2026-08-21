@@ -112,6 +112,51 @@ Memotong segmen rekaman video tertentu dari timeline dan mengunduhnya sebagai be
   ```
 * **Response (200 OK):** Binary file stream (`video/mp4`) sebagai file unduhan.
 
+#### `POST /api/storage/cleanup/run_auto`
+Memicu eksekusi aturan pembersihan otomatis (retensi hari & ruang disk minimum) secara instan.
+* **Akses:** `@admin_required`
+* **Response (200 OK):**
+  ```json
+  {
+    "status": "success",
+    "message": "Auto-cleanup triggered successfully."
+  }
+  ```
+
+#### `POST /api/storage/cleanup/manual`
+Melakukan pembersihan manual berdasarkan umur file, kamera tertentu, atau pembersihan snapshot AI alerts.
+* **Akses:** `@admin_required`
+* **Body:**
+  ```json
+  {
+    "days": 3,
+    "cam_id": "all",
+    "clear_alerts": false
+  }
+  ```
+* **Response (200 OK):**
+  ```json
+  {
+    "status": "success",
+    "deleted_files": 24,
+    "freed_mb": 1150.5,
+    "message": "Successfully deleted 24 files, freeing 1150.5 MB."
+  }
+  ```
+
+#### `DELETE /api/recordings/<cam_id>/date/<date_str>`
+Menghapus seluruh rekaman untuk kamera tertentu pada tanggal tertentu (`YYYY-MM-DD`).
+* **Akses:** `@admin_required`
+* **Response (200 OK):**
+  ```json
+  {
+    "status": "success",
+    "deleted_files": 96,
+    "freed_mb": 4200.0,
+    "message": "Deleted 96 files for date 2026-08-21 (4200.0 MB freed)."
+  }
+  ```
+
 ---
 
 ### 2.4. Live Streaming & PTZ

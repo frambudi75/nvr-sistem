@@ -154,17 +154,27 @@ class NVRManager:
                 recorder = Recorder(cam, self.storage_path, self.segment_time)
                 self.recorders[cam_id] = recorder
                 recorder.start()
-                
-                # Start AI Detector if available
-                if AIDetector:
+                self.camera_states[cam_id] = "online"
+
+        # Manage AI Detectors lifecycle (start/stop based on camera enabled and ai_detection toggle)
+        if AIDetector:
+            for cam_id, cam in cameras_config.items():
+                ai_wanted = (
+                    cam.get("enabled", True) and 
+                    cam.get("ai_detection", True) and 
+                    self.is_within_schedule(cam_id, cameras_config) and 
+                    cam_id in self.recorders
+                )
+                if ai_wanted and cam_id not in self.ai_detectors:
                     try:
                         ai_det = AIDetector(cam, self.storage_path, self)
                         self.ai_detectors[cam_id] = ai_det
                         ai_det.start()
                     except Exception as e:
                         logger.error(f"Failed to start AI Detector for {cam.get('name', cam_id)}: {e}")
-                
-                self.camera_states[cam_id] = "online"
+                elif not ai_wanted and cam_id in self.ai_detectors:
+                    self.ai_detectors[cam_id].stop()
+                    del self.ai_detectors[cam_id]
                 
     def reload_config(self):
         """Called by Web UI after config is updated."""

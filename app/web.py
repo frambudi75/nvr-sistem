@@ -442,6 +442,145 @@ def get_storage_analytics():
         logger.error(f"Error computing storage analytics: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route("/api/storage/cleanup/run_auto", methods=["POST"])
+@admin_required
+def run_auto_cleanup():
+    try:
+        from cleanup import Cleaner
+        retention_days = nvr_manager.config.get("retention_days", 7)
+        
+        # 1. Retention cleanup
+        if retention_days > 0:
+            cleaner = Cleaner(nvr_manager.storage_path, retention_days)
+            cleaner.cleanup_old_files()
+
+        # 2. Smart storage cleanup if under min_free_gb
+        smart_config = nvr_manager.config.get("smart_cleanup", {})
+        min_free_gb = smart_config.get("min_free_gb", 5)
+        if min_free_gb > 0 and os.path.exists(nvr_manager.storage_path):
+            total, used, free = shutil.disk_usage(nvr_manager.storage_path)
+            free_gb = free / (1024**3)
+            if free_gb < min_free_gb:
+                mp4_files = []
+                for root, dirs, files in os.walk(nvr_manager.storage_path):
+                    for file in files:
+                        if file.endswith(".mp4"):
+                            fpath = os.path.join(root, file)
+                            try:
+                                mp4_files.append((fpath, os.path.getmtime(fpath), os.path.getsize(fpath)))
+                            except Exception:
+                                pass
+                mp4_files.sort(key=lambda x: x[1])
+                for fpath, mtime, sz in mp4_files:
+                    try:
+                        os.remove(fpath)
+                        total, used, free = shutil.disk_usage(nvr_manager.storage_path)
+                        if (free / (1024**3)) >= (min_free_gb + 2):
+                            break
+                    except Exception:
+                        pass
+                        
+        return jsonify({
+            "status": "success",
+            "message": "Auto-cleanup triggered successfully."
+        }), 200
+    except Exception as e:
+        logger.error(f"Error triggering auto cleanup: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/storage/cleanup/manual", methods=["POST"])
+@admin_required
+def manual_cleanup():
+    try:
+        data = request.json or {}
+        days = data.get("days")
+        cam_id = data.get("cam_id") # "all" or specific cam_id
+        clear_alerts = data.get("clear_alerts", False)
+        
+        deleted_files = 0
+        freed_bytes = 0
+        
+        target_dirs = []
+        if cam_id and cam_id != "all":
+            cam_path = os.path.join(nvr_manager.storage_path, cam_id)
+            if os.path.exists(cam_path):
+                target_dirs.append(cam_path)
+        else:
+            if os.path.exists(nvr_manager.storage_path):
+                target_dirs = [os.path.join(nvr_manager.storage_path, d) for d in os.listdir(nvr_manager.storage_path) if os.path.isdir(os.path.join(nvr_manager.storage_path, d))]
+
+        now = time.time()
+        cutoff_time = (now - (float(days) * 86400)) if (days is not None and str(days) != "" and float(days) >= 0) else None
+
+        for tdir in target_dirs:
+            for root, dirs, files in os.walk(tdir, topdown=False):
+                # If clear_alerts is True, delete files in alerts dir
+                if clear_alerts and os.path.basename(root) == "alerts":
+                    for file in files:
+                        fpath = os.path.join(root, file)
+                        try:
+                            freed_bytes += os.path.getsize(fpath)
+                            os.remove(fpath)
+                            deleted_files += 1
+                        except Exception:
+                            pass
+                            
+                for file in files:
+                    if file.endswith(".mp4"):
+                        fpath = os.path.join(root, file)
+                        try:
+                            mtime = os.path.getmtime(fpath)
+                            if cutoff_time is None or mtime < cutoff_time:
+                                freed_bytes += os.path.getsize(fpath)
+                                os.remove(fpath)
+                                deleted_files += 1
+                        except Exception:
+                            pass
+
+        freed_mb = round(freed_bytes / (1024 * 1024), 2)
+        return jsonify({
+            "status": "success",
+            "deleted_files": deleted_files,
+            "freed_mb": freed_mb,
+            "message": f"Successfully deleted {deleted_files} files, freeing {freed_mb} MB."
+        }), 200
+    except Exception as e:
+        logger.error(f"Error during manual cleanup: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/recordings/<cam_id>/date/<date_str>", methods=["DELETE"])
+@admin_required
+def delete_date_recordings(cam_id, date_str):
+    try:
+        cam_dir = os.path.join(nvr_manager.storage_path, cam_id)
+        if not os.path.exists(cam_dir):
+            return jsonify({"status": "error", "message": "Camera directory not found"}), 404
+            
+        deleted_count = 0
+        freed_bytes = 0
+        
+        for root, dirs, files in os.walk(cam_dir):
+            for file in files:
+                if file.endswith(".mp4") and file.startswith(date_str):
+                    fpath = os.path.join(root, file)
+                    try:
+                        freed_bytes += os.path.getsize(fpath)
+                        os.remove(fpath)
+                        deleted_count += 1
+                    except Exception:
+                        pass
+                        
+        freed_mb = round(freed_bytes / (1024 * 1024), 2)
+        return jsonify({
+            "status": "success",
+            "deleted_files": deleted_count,
+            "freed_mb": freed_mb,
+            "message": f"Deleted {deleted_count} files for date {date_str} ({freed_mb} MB freed)."
+        }), 200
+    except Exception as e:
+        logger.error(f"Error deleting date recordings: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/recordings/<cam_id>/<path:filename>")
 @login_required
 def serve_recording(cam_id, filename):

@@ -530,6 +530,52 @@
                 <div class="actions" style="justify-content: flex-start; margin-top: 1.5rem; gap: 1rem;">
                     <button onclick="saveNotificationSettings()">Save Settings</button>
                     <button class="secondary" onclick="triggerTestNotification()" id="btnTestNotif">Test Notifications</button>
+                    <button class="secondary" onclick="runAutoCleanupNow()" id="btnAutoCleanup" style="border-color: var(--primary); color: var(--primary);">⚡ Run Auto-Cleanup Now</button>
+                </div>
+            </div>
+
+            <!-- Manual Storage Cleanup Section -->
+            <div class="card">
+                <h2 style="margin-top: 0; font-size: 1.2rem;">Manual Storage Cleanup (Pembersihan Manual)</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Hapus rekaman lama atau bersihkan ruang penyimpanan secara manual sesuai kebutuhan.</p>
+                
+                <div class="grid-2" style="margin-top: 1.25rem;">
+                    <!-- Option 1: Clean by Age -->
+                    <div style="background: rgba(0,0,0,0.25); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--text-main);">🗓️ Hapus Berdasarkan Umur</h4>
+                            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 0.75rem 0;">Hapus semua rekaman yang lebih tua dari jumlah hari tertentu.</p>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label>Lebih Tua Dari (Hari)</label>
+                                <input type="number" id="manualCleanupDays" value="3" min="0" placeholder="e.g. 3">
+                            </div>
+                        </div>
+                        <button class="danger" onclick="triggerManualCleanup('age')" id="btnCleanAge" style="width: 100%; font-size: 0.85rem;">🗑️ Hapus Rekaman Lama</button>
+                    </div>
+
+                    <!-- Option 2: Clean by Camera -->
+                    <div style="background: rgba(0,0,0,0.25); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--text-main);">📷 Hapus per Kamera</h4>
+                            <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0 0 0.75rem 0;">Pilih kamera tertentu untuk menghapus seluruh file rekamannya.</p>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label>Pilih Kamera</label>
+                                <select id="manualCleanupCamSelect">
+                                    <option value="all">Semua Kamera</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="danger" onclick="triggerManualCleanup('cam')" id="btnCleanCam" style="width: 100%; font-size: 0.85rem;">🗑️ Kosongkan Rekaman Kamera</button>
+                    </div>
+                </div>
+
+                <!-- Option 3: Clean AI Alert Snapshots -->
+                <div style="background: rgba(0,0,0,0.25); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border); margin-top: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                    <div>
+                        <h4 style="margin: 0 0 0.25rem 0; color: var(--text-main);">🚨 Bersihkan Snapshot Alert AI</h4>
+                        <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0;">Hapus semua file gambar snapshot deteksi manusia dari folder alerts.</p>
+                    </div>
+                    <button class="danger" onclick="triggerManualCleanup('alerts')" id="btnCleanAlerts" style="white-space: nowrap; font-size: 0.85rem;">🗑️ Hapus Semua Snapshot AI</button>
                 </div>
             </div>
         </div>
@@ -690,6 +736,9 @@
                             <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem;">
                                 <div class="flex-between">
                                     <button class="secondary" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;" onclick="toggleExportPanel()" id="btnToggleExport">✂️ Export Clip</button>
+                                    {% if role == 'admin' %}
+                                    <button class="danger" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;" onclick="deleteActiveDateRecordings()" id="btnDeleteDate">🗑️ Delete Selected Date</button>
+                                    {% endif %}
                                 </div>
                                 <div id="exportPanel" style="display: none; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); padding: 1rem; border-radius: 6px; margin-top: 0.5rem; gap: 1rem; flex-direction: column;">
                                     <div class="grid-2">
@@ -785,6 +834,12 @@
                 <div class="form-group">
                     <label>Storage Quota (GB) - <i>0 for unlimited</i></label>
                     <input type="number" id="camQuota" placeholder="e.g. 20" value="0" step="0.1">
+                </div>
+
+                <!-- AI Human Detection Toggle -->
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">
+                    <input type="checkbox" id="camAiDetection" style="width: auto;" checked>
+                    <label style="margin: 0; cursor: pointer; color: var(--text-main);" for="camAiDetection">🤖 Enable AI Human Detection & Discord Alerts</label>
                 </div>
 
                 <!-- Recording Schedule -->
@@ -975,6 +1030,7 @@
                 `;
                 grid.appendChild(card);
             });
+            updateCleanupCameraDropdown();
         }
 
         /* --- Grid View Logic --- */
@@ -1574,6 +1630,7 @@
             document.getElementById('camPort').value = '554';
             document.getElementById('camUrl').value = '';
             document.getElementById('camEnabled').checked = true;
+            document.getElementById('camAiDetection').checked = true;
             document.getElementById('camQuota').value = '0';
             document.getElementById('camSchedEnabled').checked = false;
             document.getElementById('camSchedStart').value = '18:00';
@@ -1599,6 +1656,7 @@
             document.getElementById('camPort').value = cam.port || '554';
             document.getElementById('camUrl').value = cam.rtsp_url || '';
             document.getElementById('camEnabled').checked = cam.enabled !== false;
+            document.getElementById('camAiDetection').checked = cam.ai_detection !== false;
             document.getElementById('camQuota').value = cam.max_quota_gb || '0';
             
             const sched = cam.schedule || { enabled: false, start: '18:00', end: '06:00' };
@@ -1653,11 +1711,12 @@
             const name = document.getElementById('camName').value;
             const brand = document.getElementById('camBrand').value;
             const enabled = document.getElementById('camEnabled').checked;
+            const ai_detection = document.getElementById('camAiDetection').checked;
             if(!id || !name) { alert("Fill Camera ID and Name."); return; }
             const rtsp_url = buildRtspUrl();
             if (!rtsp_url) { alert("Fill required RTSP URL / IP Address fields."); return; }
             
-            let camData = { id, name, brand, enabled, rtsp_url };
+            let camData = { id, name, brand, enabled, ai_detection, rtsp_url };
             
             const quota = parseFloat(document.getElementById('camQuota').value) || 0;
             if (quota > 0) camData.max_quota_gb = quota;
@@ -1735,6 +1794,119 @@
                 } else alert("Error: " + data.message);
             } catch(e) { alert("Error"); }
             finally { btn.innerText = "Update Credentials"; btn.disabled = false; }
+        }
+
+        /* --- Storage Cleanup Logic (Manual & Auto) --- */
+        function updateCleanupCameraDropdown() {
+            const select = document.getElementById('manualCleanupCamSelect');
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = '<option value="all">Semua Kamera</option>';
+            if (currentConfig.cameras) {
+                currentConfig.cameras.forEach(cam => {
+                    select.innerHTML += `<option value="${cam.id}">${cam.name} (${cam.id})</option>`;
+                });
+            }
+            select.value = currentVal || 'all';
+        }
+
+        async function runAutoCleanupNow() {
+            if (!confirm("Jalankan aturan pembersihan otomatis (retensi hari & ruang disk minimum) sekarang?")) return;
+            const btn = document.getElementById('btnAutoCleanup');
+            const orig = btn.innerText;
+            btn.innerText = "Cleaning..."; btn.disabled = true;
+            try {
+                const res = await fetch('/api/storage/cleanup/run_auto', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || "Pembersihan otomatis berhasil dijalankan!");
+                    fetchData();
+                    if (currentViewCamId) fetchRecordings(currentViewCamId);
+                } else {
+                    alert("Gagal: " + (data.message || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Request error: " + e.message);
+            } finally {
+                btn.innerText = orig; btn.disabled = false;
+            }
+        }
+
+        async function triggerManualCleanup(type) {
+            let payload = {};
+            let confirmMsg = "";
+
+            if (type === 'age') {
+                const days = document.getElementById('manualCleanupDays').value;
+                if (days === "" || parseInt(days) < 0) {
+                    alert("Masukkan jumlah hari yang valid.");
+                    return;
+                }
+                confirmMsg = `Yakin ingin menghapus SEMUA rekaman yang lebih tua dari ${days} hari?`;
+                payload = { days: parseInt(days) };
+            } else if (type === 'cam') {
+                const camId = document.getElementById('manualCleanupCamSelect').value;
+                const camName = camId === 'all' ? 'SEMUA KAMERA' : (currentConfig.cameras.find(c => c.id === camId)?.name || camId);
+                confirmMsg = `⚠️ PERINGATAN: Yakin ingin menghapus seluruh rekaman untuk ${camName}? Tindakan ini tidak dapat dibatalkan!`;
+                payload = { cam_id: camId };
+            } else if (type === 'alerts') {
+                confirmMsg = "Yakin ingin menghapus semua file gambar snapshot AI dari folder alerts?";
+                payload = { clear_alerts: true };
+            }
+
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await fetch('/api/storage/cleanup/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Pembersihan manual selesai!\n\n- Berkas terhapus: ${data.deleted_files}\n- Ruang dibebaskan: ${data.freed_mb} MB`);
+                    fetchData();
+                    if (currentViewCamId) fetchRecordings(currentViewCamId);
+                } else {
+                    alert("Gagal: " + (data.message || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Request failed: " + e.message);
+            }
+        }
+
+        async function deleteActiveDateRecordings() {
+            if (!activePlayingDate || !currentViewCamId) {
+                alert("Pilih tanggal rekaman yang ingin dihapus terlebih dahulu.");
+                return;
+            }
+            if (!confirm(`⚠️ PERINGATAN: Yakin ingin menghapus seluruh rekaman pada tanggal ${activePlayingDate}?`)) return;
+
+            const btn = document.getElementById('btnDeleteDate');
+            const orig = btn.innerText;
+            btn.innerText = "Deleting..."; btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/recordings/${currentViewCamId}/date/${activePlayingDate}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || "Rekaman tanggal berhasil dihapus!");
+                    fetchRecordings(currentViewCamId);
+                    document.getElementById('noVideoMsg').style.display = 'block';
+                    document.getElementById('noVideoMsg').innerText = 'Rekaman tanggal ini telah dihapus.';
+                    const vid = document.getElementById('playbackVideo');
+                    vid.src = "";
+                    document.getElementById('timelineWrapper').style.display = 'none';
+                } else {
+                    alert("Gagal menghapus: " + (data.message || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                btn.innerText = orig; btn.disabled = false;
+            }
         }
 
         function initChart() {
