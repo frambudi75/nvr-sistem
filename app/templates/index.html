@@ -365,6 +365,46 @@
             border-radius: 2px;
         }
 
+        .timeline-event-marker {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #f59e0b;
+            box-shadow: 0 0 8px #f59e0b;
+            cursor: pointer;
+            z-index: 5;
+            transition: transform 0.15s, background 0.15s;
+            border-radius: 2px;
+            pointer-events: auto;
+        }
+
+        .timeline-event-marker:hover {
+            background: #ef4444;
+            transform: scaleX(2.2);
+            box-shadow: 0 0 14px #ef4444;
+            z-index: 10;
+        }
+
+        .event-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .event-list-item:hover {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.4);
+            transform: translateX(3px);
+        }
+
         .timeline-handle {
             position: absolute;
             top: 0;
@@ -816,8 +856,19 @@
                 </div>
             </div>
             <div class="viewer-container" id="viewPlayback">
-                <div class="playback-layout">
-                    <div class="recording-list" id="recordingList">Loading dates...</div>
+                <div class="playback-grid">
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="recording-list" id="recordingList">Loading dates...</div>
+                        
+                        <!-- Detected Events Sidebar Box -->
+                        <div id="eventsListContainer" style="display: none; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; max-height: 220px; overflow-y: auto;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: #f59e0b; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                                <span>🚨 Event Terdeteksi:</span>
+                                <span id="eventsCountBadge" style="background: rgba(245, 158, 11, 0.2); padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; color: #f59e0b;">0</span>
+                            </div>
+                            <div id="eventsListItems" style="display: flex; flex-direction: column; gap: 0.35rem;"></div>
+                        </div>
+                    </div>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <div class="video-player-container">
                             <video id="playbackVideo" controls>
@@ -1001,6 +1052,7 @@
         // Playback State Variables
         let activeRecordingsData = [];
         let selectedDateFiles = [];
+        let activeDateEvents = [];
         let activePlayingFileIndex = -1;
         let activePlayingDate = "";
 
@@ -1231,6 +1283,7 @@
             // Reset playback variables
             activeRecordingsData = [];
             selectedDateFiles = [];
+            activeDateEvents = [];
             activePlayingFileIndex = -1;
             activePlayingDate = "";
             document.getElementById('timelineWrapper').style.display = 'none';
@@ -1270,6 +1323,7 @@
             
             // Hide timeline wrapper and reset player
             document.getElementById('timelineWrapper').style.display = 'none';
+            document.getElementById('eventsListContainer').style.display = 'none';
             const vid = document.getElementById('playbackVideo');
             vid.pause();
             vid.src = "";
@@ -1325,6 +1379,56 @@
             if (selectedDateFiles.length > 0) {
                 playFileAtIndex(0, 0);
             }
+
+            // Load AI detected events for this date
+            loadEventsForDate(dateStr);
+        }
+
+        async function loadEventsForDate(dateStr) {
+            if (!currentViewCamId) return;
+            try {
+                const res = await fetch(`/api/events/${currentViewCamId}/${dateStr}`);
+                if (res.ok) {
+                    activeDateEvents = await res.json();
+                    renderTimelineTracks();
+                    renderEventsList();
+                } else {
+                    activeDateEvents = [];
+                    renderEventsList();
+                }
+            } catch (e) {
+                activeDateEvents = [];
+                renderEventsList();
+            }
+        }
+
+        function renderEventsList() {
+            const container = document.getElementById('eventsListContainer');
+            const items = document.getElementById('eventsListItems');
+            const badge = document.getElementById('eventsCountBadge');
+            
+            if (!container || !items) return;
+            
+            if (!activeDateEvents || activeDateEvents.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            badge.innerText = activeDateEvents.length;
+            items.innerHTML = '';
+            
+            activeDateEvents.forEach(evt => {
+                const row = document.createElement('div');
+                row.className = 'event-list-item';
+                row.innerHTML = `
+                    <span style="font-family: monospace; color: white;">🚨 ${evt.time}</span>
+                    <span style="color: #f59e0b; font-size: 0.75rem;">Person</span>
+                `;
+                row.title = `Klik untuk loncat ke ${evt.time}`;
+                row.onclick = () => jumpToTimelineTime(evt.seconds);
+                items.appendChild(row);
+            });
         }
 
         function renderTimelineTracks() {
@@ -1334,6 +1438,7 @@
             const totalDaySeconds = 86400;
             const segmentDuration = currentConfig.segment_time || 900;
             
+            // 1. Render green recording segments
             selectedDateFiles.forEach(file => {
                 const leftPercent = (file.startSeconds / totalDaySeconds) * 100;
                 const widthPercent = (segmentDuration / totalDaySeconds) * 100;
@@ -1346,8 +1451,38 @@
                 
                 tracksContainer.appendChild(track);
             });
+
+            // 2. Render yellow event markers on top of timeline
+            activeDateEvents.forEach(evt => {
+                const leftPercent = (evt.seconds / totalDaySeconds) * 100;
+                const marker = document.createElement('div');
+                marker.className = 'timeline-event-marker';
+                marker.style.left = `${leftPercent}%`;
+                marker.title = `🚨 Human Detected: ${evt.time} (Klik untuk loncat)`;
+                marker.onclick = (e) => {
+                    e.stopPropagation();
+                    jumpToTimelineTime(evt.seconds);
+                };
+                tracksContainer.appendChild(marker);
+            });
             
             document.getElementById('timelineHandle').style.left = '0%';
+        }
+
+        function jumpToTimelineTime(targetSeconds) {
+            if (selectedDateFiles.length === 0) return;
+            
+            let targetFileIndex = selectedDateFiles.findIndex(f => targetSeconds >= f.startSeconds && targetSeconds <= f.endSeconds);
+            
+            if (targetFileIndex !== -1) {
+                const offsetSeconds = targetSeconds - selectedDateFiles[targetFileIndex].startSeconds;
+                playFileAtIndex(targetFileIndex, Math.max(0, offsetSeconds - 2)); // 2 seconds before event for context
+            } else {
+                targetFileIndex = selectedDateFiles.findIndex(f => f.startSeconds > targetSeconds);
+                if (targetFileIndex !== -1) {
+                    playFileAtIndex(targetFileIndex, 0);
+                }
+            }
         }
 
         function updateTimelineTooltip(event) {

@@ -15,6 +15,7 @@ Format berkas ini mengikuti prinsip [Keep a Changelog](https://keepachangelog.co
 * **Camera Area / Location Grouping:** Pengelompokan kamera berdasarkan lokasi (misal: *Outdoor, Lantai 1, Gudang*) dengan filter instan di dashboard.
 * **Remote Backup & NAS Cloud Sync:** Pencadangan otomatis dan manual ke Telegram Channel (snapshot harian) serta folder penyimpanan sekunder (NAS/SMB).
 * **Toggle AI Detection per Kamera:** Kontrol individual untuk mengaktifkan atau menonaktifkan proses AI deteksi manusia dan notifikasi per kamera.
+* **AI Event Markers di Timeline Playback:** Garis penanda kuning/oranye interaktif di atas timeline 24 jam pada detik saat terdeteksi manusia/gerakan, lengkap dengan sidebar daftar event yang dapat diklik untuk langsung loncat (*seek*) ke momen kejadian tanpa menebak-nebak.
 * **Pembersihan Penyimpanan Manual:** Opsi penghapusan rekaman berdasarkan umur hari, per kamera, snapshot AI, dan per tanggal rekaman di pemutar video.
 
 ---

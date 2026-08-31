@@ -552,6 +552,36 @@ def list_recordings(cam_id):
         
     return jsonify(result)
 
+@app.route("/api/events/<cam_id>/<date_str>")
+@login_required
+def get_camera_events(cam_id, date_str):
+    """
+    Returns detected AI events (snapshots) for a specific camera and date.
+    Used to render interactive event markers on the timeline scrubber.
+    """
+    alerts_dir = os.path.join(nvr_manager.storage_path, cam_id, "alerts")
+    events = []
+    if os.path.exists(alerts_dir):
+        pattern = os.path.join(alerts_dir, f"alert_{date_str}_*.jpg")
+        for f in glob.glob(pattern):
+            basename = os.path.basename(f)
+            try:
+                time_part = basename.replace(f"alert_{date_str}_", "").replace(".jpg", "")
+                parts = [int(p) for p in time_part.split("-")]
+                time_str = f"{parts[0]:02d}:{parts[1]:02d}:{parts[2]:02d}"
+                seconds = parts[0] * 3600 + parts[1] * 60 + parts[2]
+                events.append({
+                    "time": time_str,
+                    "seconds": seconds,
+                    "filename": basename,
+                    "snapshot_url": f"/recordings/{cam_id}/alerts/{basename}"
+                })
+            except Exception:
+                continue
+                
+    events.sort(key=lambda x: x["seconds"])
+    return jsonify(events)
+
 @app.route("/api/system/storage_analytics", methods=["GET"])
 @login_required
 def get_storage_analytics():
