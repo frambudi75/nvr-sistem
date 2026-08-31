@@ -713,6 +713,205 @@
             background-color: #0f172a !important;
             color: #ffffff !important;
         }
+
+        /* =========================================================
+           MOBILE & TABLET RESPONSIVE SYSTEM (PWA OPTIMIZED)
+           ========================================================= */
+        
+        /* Mobile-Friendly Main Navigation: Touch-scrollable pill bar */
+        .main-nav {
+            display: flex !important;
+            gap: 0.35rem;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 0.35rem;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+        }
+        .main-nav::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+        .nav-tab {
+            flex-shrink: 0;
+            padding: 0.55rem 0.95rem;
+        }
+
+        /* Floor Plan Responsive Container */
+        .floorplan-wrapper {
+            position: relative;
+            width: 100%;
+            border-radius: 12px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            background: #030712;
+            border: 1px solid var(--border);
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .floorplan-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+            max-height: 75vh;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .fp-pin {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 10;
+            touch-action: manipulation;
+        }
+
+        .fp-pin-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fp-pin-label {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.92);
+            color: #ffffff;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            white-space: nowrap;
+            margin-top: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                padding: 1.25rem 1.25rem !important;
+            }
+            .storage-widget {
+                gap: 1.25rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.85rem 0.85rem !important;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                margin-bottom: 1.25rem;
+                padding-bottom: 1rem;
+            }
+
+            .brand-container {
+                width: 100%;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+                display: flex;
+                gap: 0.5rem;
+            }
+
+            .clock-badge {
+                display: none; /* Hide on small mobile to save space */
+            }
+
+            .header-actions button {
+                flex: 1;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.82rem;
+            }
+
+            .card {
+                padding: 1.25rem 1rem !important;
+                border-radius: 12px !important;
+                margin-bottom: 1.25rem !important;
+            }
+
+            /* Responsive Storage Bar */
+            .storage-widget {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 0.85rem !important;
+            }
+
+            .storage-bar-wrap {
+                width: 100% !important;
+                min-width: unset !important;
+            }
+
+            /* Responsive Camera Grid */
+            .camera-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+
+            /* Responsive Playback Viewer */
+            .playback-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+
+            .recording-list {
+                max-height: 200px !important;
+            }
+
+            /* Responsive Modals */
+            .modal-content {
+                padding: 1.25rem 1rem !important;
+                max-width: 95vw !important;
+                max-height: 94vh !important;
+                border-radius: 14px !important;
+            }
+
+            .modal-large {
+                max-width: 96vw !important;
+                padding: 1.25rem 1rem !important;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+
+            /* Prevent iOS Safari 16px Auto-Zoom on form focus */
+            input[type="text"], input[type="number"], input[type="password"], input[type="time"], select {
+                font-size: 16px !important;
+            }
+
+            .timeline-labels {
+                font-size: 9px !important;
+            }
+
+            .timeline-container {
+                height: 36px !important; /* Larger touch area for fingers */
+            }
+        }
     </style>
 </head>
 <body>
@@ -982,34 +1181,53 @@
         <!-- PAGE: Floor Plan -->
         <div id="page-floorplan" class="page">
             <div class="card">
-                <div class="flex-between" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div class="flex-between" style="margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                     <div>
-                        <h2 style="margin: 0; font-size: 1.2rem;">🗺️ Interactive Floor Plan (Peta Denah)</h2>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.2rem 0 0 0;">Denah interaktif lokasi CCTV. Klik pin kamera untuk melihat live preview seketika.</p>
+                        <h2 class="card-header-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                            🗺️ Interactive Floor Plan (Peta Denah)
+                        </h2>
+                        <div style="color: var(--text-muted); font-size: 0.82rem; margin-top: 0.25rem;">
+                            Denah interaktif lokasi CCTV. Klik/tap pin kamera untuk memutar live stream seketika.
+                        </div>
                     </div>
                     {% if role == 'admin' %}
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <input type="file" id="floorplanFileInput" accept="image/*" style="display: none;" onchange="uploadFloorplan()">
-                        <button class="secondary" style="font-size: 0.85rem;" onclick="document.getElementById('floorplanFileInput').click()">📤 Upload Blueprint</button>
-                        <button class="secondary" id="btnToggleFloorEdit" style="font-size: 0.85rem;" onclick="toggleFloorplanEditMode()">✏️ Edit Pins</button>
-                        <button id="btnSaveFloorPins" style="display: none; font-size: 0.85rem;" onclick="saveFloorplanPins()">💾 Save Pins</button>
+                        <button class="secondary" style="font-size: 0.82rem; padding: 0.45rem 0.85rem;" onclick="document.getElementById('floorplanFileInput').click()">
+                            <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                            Upload Blueprint
+                        </button>
+                        <button class="secondary" id="btnToggleFloorEdit" style="font-size: 0.82rem; padding: 0.45rem 0.85rem;" onclick="toggleFloorplanEditMode()">
+                            ✏️ Edit Pins
+                        </button>
+                        <button id="btnSaveFloorPins" style="display: none; font-size: 0.82rem; padding: 0.45rem 0.85rem; background-color: var(--success);" onclick="saveFloorplanPins()">
+                            💾 Save Pins
+                        </button>
                     </div>
                     {% endif %}
                 </div>
 
                 <!-- Add Pin Selector (Visible in Edit Mode) -->
-                <div id="floorplanEditBar" style="display: none; background: rgba(2, 132, 199, 0.15); border: 1px solid var(--primary); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                    <span style="font-size: 0.85rem; font-weight: 500;">Pilih Kamera untuk Diletakkan:</span>
-                    <select id="floorplanCamSelect" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; background: #111827; color: white; border: 1px solid var(--border); border-radius: 4px;"></select>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">Lalu klik pada gambar denah di bawah untuk menaruh pin.</span>
+                <div id="floorplanEditBar" style="display: none; background: rgba(2, 132, 199, 0.15); border: 1px solid var(--primary); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="font-size: 0.85rem; color: #e0f2fe;">
+                        <b>Mode Edit:</b> Pilih kamera lalu klik/tap pada denah untuk menempatkan pin.
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Pilih Kamera:</span>
+                        <select id="floorplanCamSelect" style="width: auto; padding: 0.35rem 0.65rem; font-size: 0.85rem;"></select>
+                    </div>
                 </div>
 
-                <div id="floorplanContainer" style="position: relative; width: 100%; min-height: 400px; background: rgba(0,0,0,0.3); border: 1px dashed var(--border); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; user-select: none;" onclick="handleFloorplanClick(event)">
-                    <img id="floorplanImg" src="/api/floorplan/image" style="width: 100%; height: auto; display: block;" onerror="handleFloorplanImgError(this)" onload="handleFloorplanImgSuccess(this)">
+                <!-- Responsive Floor Plan Viewport Container -->
+                <div id="floorplanContainer" class="floorplan-wrapper" onclick="handleFloorplanClick(event)" ontouchend="handleFloorplanClick(event)">
+                    <img id="floorplanImg" class="floorplan-img" src="/api/floorplan/image" alt="Blueprint" onerror="handleFloorplanImgError(this)" onload="handleFloorplanImgSuccess(this)">
+                    
                     <div id="floorplanNoImgMsg" style="color: var(--text-muted); text-align: center; padding: 3rem 1rem;">
-                        🗺️ <b>Belum ada gambar denah yang diunggah.</b><br>
+                        <svg style="width: 48px; height: 48px; fill: #64748b; margin-bottom: 1rem;" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                        <div style="font-weight: 500; font-size: 1rem; color: #cbd5e1; margin-bottom: 0.35rem;">Belum ada denah / blueprint lokasi</div>
+                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">Unggah gambar denah JPG/PNG properti Anda untuk menempatkan pin kamera CCTV interaktif.</div>
                         {% if role == 'admin' %}
-                        <small>Klik tombol <b>Upload Blueprint</b> di atas untuk mengunggah denah rumah/gedung Anda (JPG/PNG).</small>
+                        <button onclick="document.getElementById('floorplanFileInput').click()">Upload Blueprint Denah</button>
                         {% endif %}
                     </div>
                     <div id="floorplanPinsLayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
@@ -1380,12 +1598,21 @@
         let activePlayingFileIndex = -1;
         let activePlayingDate = "";
 
-        function switchMainTab(tabId) {
+        function switchMainTab(tabId, el) {
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             
-            event.target.classList.add('active');
-            document.getElementById('page-' + tabId).classList.add('active');
+            let navEl = el;
+            if (!navEl && typeof event !== 'undefined' && event) {
+                navEl = event.target ? event.target.closest('.nav-tab') : null;
+            }
+            if (!navEl) {
+                navEl = document.querySelector(`.nav-tab[onclick*="'${tabId}'"]`);
+            }
+            if (navEl) navEl.classList.add('active');
+            
+            const targetPage = document.getElementById('page-' + tabId);
+            if (targetPage) targetPage.classList.add('active');
 
             if(tabId === 'logs') fetchLogs();
             if(tabId === 'system') fetchStorageAnalytics();
@@ -3117,8 +3344,13 @@
             const container = document.getElementById('floorplanContainer');
             const rect = container.getBoundingClientRect();
             
-            const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-            const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+            const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : (e.changedTouches && e.changedTouches.length > 0 ? e.changedTouches[0].clientX : e.clientX);
+            const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : (e.changedTouches && e.changedTouches.length > 0 ? e.changedTouches[0].clientY : e.clientY);
+            
+            if (clientX === undefined || clientY === undefined) return;
+            
+            const xPercent = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+            const yPercent = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
             
             const sel = document.getElementById('floorplanCamSelect');
             const camId = sel ? sel.value : null;
@@ -3145,25 +3377,21 @@
                 const isOnline = status.recording;
                 
                 const pinEl = document.createElement('div');
-                pinEl.style.position = 'absolute';
+                pinEl.className = 'fp-pin';
                 pinEl.style.left = `${pin.x}%`;
                 pinEl.style.top = `${pin.y}%`;
-                pinEl.style.transform = 'translate(-50%, -50%)';
-                pinEl.style.pointerEvents = 'auto';
-                pinEl.style.cursor = 'pointer';
-                pinEl.style.zIndex = '10';
                 
                 pinEl.innerHTML = `
-                    <div style="background: ${isOnline ? 'var(--success)' : 'var(--danger)'}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px ${isOnline ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'}; border: 2px solid white; transition: transform 0.2s;">
+                    <div class="fp-pin-icon" style="background: ${isOnline ? 'var(--success)' : 'var(--danger)'}; box-shadow: 0 0 12px ${isOnline ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'};">
                         <svg style="width: 14px; height: 14px; fill: white;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                     </div>
-                    <div style="position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; white-space: nowrap; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="fp-pin-label">
                         ${cam.name}
                     </div>
                 `;
                 
-                pinEl.onmouseenter = () => { pinEl.firstElementChild.style.transform = 'scale(1.2)'; };
-                pinEl.onmouseleave = () => { pinEl.firstElementChild.style.transform = 'scale(1)'; };
+                pinEl.onmouseenter = () => { const icon = pinEl.querySelector('.fp-pin-icon'); if (icon) icon.style.transform = 'scale(1.25)'; };
+                pinEl.onmouseleave = () => { const icon = pinEl.querySelector('.fp-pin-icon'); if (icon) icon.style.transform = 'scale(1)'; };
                 
                 pinEl.onclick = (ev) => {
                     ev.stopPropagation();
