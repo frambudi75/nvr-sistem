@@ -12,22 +12,33 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%230b0f19'/%3E%3Ccircle cx='50' cy='50' r='18' fill='none' stroke='%2306b6d4' stroke-width='8'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23ef4444'/%3E%3Cpath d='M25 50 H32 M68 50 H75' stroke='%2306b6d4' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --panel-bg: rgba(17, 24, 39, 0.55);
-            --panel-border: rgba(255, 255, 255, 0.05);
+            --bg-color: #080c15;
+            --panel-bg: rgba(15, 23, 42, 0.65);
+            --panel-border: rgba(255, 255, 255, 0.07);
+            --card-shadow: 0 12px 36px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--panel-border);
             --primary: #0284c7;
             --primary-hover: #0369a1;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
+            --accent: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #f43f5e;
+            --danger-bg: rgba(244, 63, 94, 0.12);
             --success: #10b981;
-            --border: rgba(255, 255, 255, 0.06);
-            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+            --success-bg: rgba(16, 185, 129, 0.12);
+            --border: rgba(255, 255, 255, 0.08);
+            --input-bg: rgba(15, 23, 42, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at top right, #111827, #070a13 75%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.06) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(30, 41, 59, 0.25) 0px, transparent 50%);
             background-attachment: fixed;
             color: var(--text-main);
             margin: 0;
@@ -37,138 +48,341 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1440px;
             margin: 0 auto;
-            padding: 2.5rem 2rem;
+            padding: 1.75rem 2rem;
         }
 
+        /* Top Brand Header */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.75rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        h1 { margin: 0; font-weight: 600; font-size: 1.75rem; letter-spacing: -0.025em; }
-
-        /* Main Nav Tabs */
-        .main-nav {
+        .brand-container {
             display: flex;
-            gap: 0.25rem;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 2rem;
-            padding-bottom: 0.25rem;
+            align-items: center;
+            gap: 0.85rem;
         }
+
+        .brand-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, rgba(2, 132, 199, 0.2), rgba(15, 23, 42, 0.5));
+            border: 1px solid rgba(2, 132, 199, 0.4);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+        }
+
+        .brand-logo svg {
+            width: 22px;
+            height: 22px;
+            fill: #38bdf8;
+        }
+
+        .brand-title {
+            margin: 0;
+            font-weight: 700;
+            font-size: 1.4rem;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .version-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 7px;
+            background: rgba(2, 132, 199, 0.18);
+            border: 1px solid rgba(2, 132, 199, 0.35);
+            color: #38bdf8;
+            border-radius: 20px;
+        }
+
+        .status-dot-pulse {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.78rem;
+            color: #10b981;
+            margin-top: 0.15rem;
+        }
+
+        .status-dot-pulse::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-green 2s infinite;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .clock-badge {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            padding: 0.45rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-family: monospace;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        /* Segmented Main Nav Tabs */
+        .main-nav {
+            display: inline-flex;
+            gap: 0.35rem;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 0.35rem;
+            margin-bottom: 2rem;
+        }
+
         .nav-tab {
-            padding: 0.5rem 0.85rem;
+            padding: 0.5rem 1rem;
             cursor: pointer;
             color: var(--text-muted);
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             transition: all 0.2s;
             border: 1px solid transparent;
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.5rem;
+            user-select: none;
         }
+
         .nav-tab svg {
             width: 16px;
             height: 16px;
             fill: currentColor;
-            transition: transform 0.25s ease;
+            transition: transform 0.2s ease;
         }
+
         .nav-tab:hover {
-            color: white;
-            background: rgba(255, 255, 255, 0.04);
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.05);
         }
-        .nav-tab:hover svg {
-            transform: scale(1.15);
-        }
+
         .nav-tab.active {
-            color: white;
-            background: rgba(255, 255, 255, 0.07);
-            border-color: var(--panel-border);
+            color: #ffffff;
+            background: rgba(2, 132, 199, 0.2);
+            border-color: rgba(2, 132, 199, 0.4);
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15);
+        }
+
+        .nav-tab.active svg {
+            fill: #38bdf8;
         }
 
         .page { display: none; }
         .page.active { display: block; }
 
+        /* Modern Glass Card */
         .card {
             background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--panel-border);
-            border-radius: 12px;
-            padding: 1.75rem;
+            border-radius: 14px;
+            padding: 1.5rem 1.75rem;
             box-shadow: var(--card-shadow);
             margin-bottom: 1.5rem;
         }
 
+        .card-header-title {
+            margin: 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: #ffffff;
+        }
+
+        /* Storage Widget Layout */
+        .storage-widget {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .storage-info-left {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .storage-icon-box {
+            width: 38px;
+            height: 38px;
+            background: rgba(2, 132, 199, 0.15);
+            border: 1px solid rgba(2, 132, 199, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .storage-icon-box svg {
+            width: 18px;
+            height: 18px;
+            fill: #38bdf8;
+        }
+
+        .storage-bar-wrap {
+            flex: 1;
+            min-width: 250px;
+            background: rgba(0, 0, 0, 0.4);
+            height: 10px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .storage-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0284c7, #38bdf8);
+            border-radius: 6px;
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+        }
+
+        /* Camera Grid & Cards */
         .camera-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 1.25rem;
         }
 
         .camera-card {
-            background: rgba(255, 255, 255, 0.015);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
             padding: 1.25rem;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .camera-card:hover {
             transform: translateY(-2px);
-            background: rgba(255, 255, 255, 0.035);
-            border-color: rgba(2, 132, 199, 0.3);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            background: rgba(15, 23, 42, 0.85);
+            border-color: rgba(2, 132, 199, 0.35);
+            box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(2, 132, 199, 0.2);
+        }
+
+        .cam-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.02em;
+        }
+
+        .cam-badge-recording {
+            background: var(--success-bg);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .cam-badge-stopped {
+            background: var(--danger-bg);
+            color: #fb7185;
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .cam-badge-disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .status-indicator {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            margin-right: 8px;
         }
 
         .status-recording {
             background-color: var(--success);
-            box-shadow: 0 0 10px var(--success);
+            box-shadow: 0 0 8px var(--success);
             animation: pulse-green 2s infinite;
         }
-        .status-stopped { background-color: var(--danger); box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+        .status-stopped { background-color: var(--danger); box-shadow: 0 0 6px var(--danger); }
         .status-disabled { background-color: var(--text-muted); }
 
         @keyframes pulse-green {
-            0% {
-                transform: scale(0.9);
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
-            }
-            70% {
-                transform: scale(1);
-                box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
-            }
-            100% {
-                transform: scale(0.9);
-                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-            }
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 10px var(--success); }
+            100% { transform: scale(0.9); opacity: 0.8; }
         }
 
+        .cam-meta-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.78rem;
+            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2px 7px;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .cam-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .cam-actions button {
+            flex: 1;
+            padding: 0.45rem 0.6rem;
+            font-size: 0.82rem;
+            border-radius: 6px;
+        }
+
+        /* Form Controls */
         .form-group { margin-bottom: 1.25rem; }
-        label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+        label { display: block; margin-bottom: 0.45rem; color: #cbd5e1; font-size: 0.84rem; font-weight: 500; }
         
-        input[type="text"], input[type="number"], input[type="password"], select {
+        input[type="text"], input[type="number"], input[type="password"], input[type="time"], select {
             width: 100%;
             padding: 0.65rem 0.85rem;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background-color: rgba(7, 10, 19, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background-color: var(--input-bg);
             color: white;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
+            font-family: inherit;
+            font-size: 0.88rem;
             box-sizing: border-box;
             transition: all 0.2s;
         }
@@ -176,296 +390,101 @@
         input:focus, select:focus {
             outline: none;
             border-color: var(--primary);
-            background-color: rgba(7, 10, 19, 0.7);
-            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
+            background-color: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
         }
 
+        /* Buttons */
         button {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 0.6rem 1.25rem;
-            border-radius: 6px;
+            padding: 0.6rem 1.15rem;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             transition: all 0.2s;
-            font-family: 'Inter', sans-serif;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
         }
 
         button:hover {
             background-color: var(--primary-hover);
-            box-shadow: 0 0 10px rgba(2, 132, 199, 0.25);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
         }
-        button.danger { background-color: var(--danger); }
-        button.danger:hover { background-color: #dc2626; box-shadow: 0 0 10px rgba(220, 38, 38, 0.25); }
-        button.secondary { background-color: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); }
-        button.secondary:hover { background-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.danger {
+            background-color: var(--danger-bg);
+            color: #fca5a5;
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            box-shadow: none;
+        }
+        button.danger:hover {
+            background-color: rgba(244, 63, 94, 0.25);
+            color: #ffffff;
+            border-color: var(--danger);
+            box-shadow: 0 2px 10px rgba(244, 63, 94, 0.3);
+        }
+
+        button.secondary {
+            background-color: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            box-shadow: none;
+        }
+        button.secondary:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+
+        button.secondary.active {
+            background-color: rgba(2, 132, 199, 0.2);
+            border-color: var(--primary);
+            color: #38bdf8;
+            font-weight: 600;
+        }
         
         .flex-between { display: flex; justify-content: space-between; align-items: center; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
         
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 7, 18, 0.8);
-            backdrop-filter: blur(8px);
-            align-items: center; justify-content: center;
-            z-index: 100;
-        }
-        
-        .modal.active { display: flex; }
-        
-        .modal-content {
-            background: #111827;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 500px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-large { max-width: 900px; padding: 1.5rem; }
-        
-        .actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end; }
-        
-        .cam-actions button {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.8rem;
-            margin-top: 0.75rem;
-        }
-
-        .url-truncate {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            margin-top: 0.5rem;
-        }
-
-        /* Viewer Styles */
-        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.25rem; }
-        .tab { padding: 0.5rem 1.25rem; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; font-weight: 500; font-size: 0.9rem; }
-        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-        
-        .viewer-container { display: none; }
-        .viewer-container.active { display: flex; flex-direction: column; gap: 1rem; }
-        
-        .live-stream-box {
-            width: 100%;
-            aspect-ratio: 16/9;
-            background: #030712;
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
-            position: relative;
-        }
-        .live-stream-box img { width: 100%; height: 100%; object-fit: contain; }
-
-        .playback-layout {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 1.25rem;
-            height: 500px;
-        }
-
-        .recording-list {
-            background: rgba(0, 0, 0, 0.25);
-            border-radius: 8px;
-            padding: 1rem;
-            overflow-y: auto;
-            border: 1px solid var(--border);
-        }
-
-        .date-group { margin-bottom: 1rem; }
-        .date-title { font-weight: 500; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.05em; }
-        .time-item {
-            padding: 0.4rem 0.75rem;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-radius: 4px;
-            margin-bottom: 2px;
-            transition: all 0.15s;
-        }
-        .time-item:hover { background: rgba(255, 255, 255, 0.03); color: white; }
-        .time-item.active { background: var(--primary); color: white; }
-
-        .video-player-container {
-            background: #030712;
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            border: 1px solid var(--border);
-        }
-        video { width: 100%; height: 100%; outline: none; }
-
-        .log-box {
-            background: rgba(3, 7, 18, 0.6);
-            color: #10b981;
-            font-family: monospace;
-            padding: 1.25rem;
-            border-radius: 8px;
-            height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            border: 1px solid var(--border);
-            font-size: 0.85rem;
-            line-height: 1.5;
-        }
-
-        /* Playback Timeline Scrubber Styles */
-        .timeline-wrapper {
-            margin-top: 1rem;
-            width: 100%;
-        }
-
-        .timeline-container {
-            position: relative;
-            width: 100%;
-            height: 28px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 6px;
-            cursor: pointer;
-            overflow: hidden;
-            box-sizing: border-box;
-            transition: border-color 0.2s;
-        }
-
-        .timeline-container:hover {
-            border-color: rgba(2, 132, 199, 0.3);
-        }
-
-        .timeline-tracks-container {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-        }
-
-        .timeline-track-segment {
-            position: absolute;
-            top: 2px;
-            height: calc(100% - 4px);
-            background: rgba(16, 185, 129, 0.25);
-            border-left: 1px solid rgba(16, 185, 129, 0.5);
-            border-right: 1px solid rgba(16, 185, 129, 0.5);
-            border-radius: 2px;
-        }
-
-        .timeline-event-marker {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: #f59e0b;
-            box-shadow: 0 0 8px #f59e0b;
-            cursor: pointer;
-            z-index: 5;
-            transition: transform 0.15s, background 0.15s;
-            border-radius: 2px;
-            pointer-events: auto;
-        }
-
-        .timeline-event-marker:hover {
-            background: #ef4444;
-            transform: scaleX(2.2);
-            box-shadow: 0 0 14px #ef4444;
-            z-index: 10;
-        }
-
-        .event-list-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-            padding: 0.35rem 0.6rem;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .event-list-item:hover {
-            background: rgba(245, 158, 11, 0.15);
-            border-color: rgba(245, 158, 11, 0.4);
-            transform: translateX(3px);
-        }
-
-        .timeline-handle {
-            position: absolute;
-            top: 0;
-            width: 2px;
-            height: 100%;
-            background-color: #ef4444;
-            box-shadow: 0 0 8px #ef4444;
-            pointer-events: none;
-            z-index: 10;
-            transform: translateX(-50%);
-            left: 0%;
-        }
-
-        .timeline-tooltip {
-            position: absolute;
-            bottom: 34px;
-            transform: translateX(-50%);
-            background: #030712;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-family: monospace;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            pointer-events: none;
-            display: none;
-            z-index: 20;
-            white-space: nowrap;
-        }
-
-        .timeline-container:hover .timeline-tooltip {
-            display: block;
-        }
-
-        .timeline-labels {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 6px;
-            font-size: 10px;
-            color: var(--text-muted);
-            font-family: monospace;
-            padding: 0 4px;
-        }
-
-        /* LEGIBILITY FIX FOR SELECT OPTIONS */
-        select option {
-            background-color: #111827 !important;
-            color: #ffffff !important;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div>
-                <h1>NVR Dashboard</h1>
-                <p style="color: var(--text-muted); margin-top: 5px;">Python Powered Recording Engine</p>
+            <div class="brand-container">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z"/></svg>
+                </div>
+                <div>
+                    <h1 class="brand-title">
+                        NVR Dashboard
+                        <span class="version-badge">v1.5.0</span>
+                    </h1>
+                    <div class="status-dot-pulse">Engine Active &bull; Storage Connected</div>
+                </div>
             </div>
-            <div style="display: flex; gap: 0.75rem; align-items: center;">
-                <button id="btnSiren" class="danger" style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="toggleSirenAlarm()">🚨 Siren Alarm</button>
-                <button class="secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="window.location.href='/logout'">Logout</button>
+            <div class="header-actions">
+                <div class="clock-badge" id="headerClock">--:--:--</div>
+                <button id="btnSiren" class="danger" onclick="toggleSirenAlarm()">
+                    <svg style="width: 15px; height: 15px; fill: currentColor;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    Siren Alarm
+                </button>
+                <button class="secondary" onclick="window.location.href='/logout'">
+                    <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                    Logout
+                </button>
             </div>
         </header>
 
@@ -500,32 +519,55 @@
 
         <!-- PAGE 1: Dashboard -->
         <div id="page-dashboard" class="page active">
-            <div style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: flex-between; align-items: center; flex-wrap: wrap;">
+            <div style="margin-bottom: 1.25rem; display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <!-- Location Group Filter Bar -->
                 <div id="groupFilterBar" style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; flex: 1;">
-                    <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 0.25rem;">Area:</span>
-                    <button class="secondary active" style="padding: 0.25rem 0.75rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('all', event)">All</button>
+                    <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-right: 0.25rem;">Filter Area:</span>
+                    <button class="secondary active" style="padding: 0.3rem 0.85rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('all', event)">All</button>
                 </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="secondary" onclick="openGridView()">Grid View</button>
+                <div style="display: flex; gap: 0.6rem;">
+                    <button class="secondary" onclick="openGridView()">
+                        <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm-9 9h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+                        Grid View
+                    </button>
                     {% if role == 'admin' %}
-                    <button onclick="openAddCameraModal()">+ Add Camera</button>
+                    <button onclick="openAddCameraModal()">
+                        <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                        Add Camera
+                    </button>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <h2 style="margin: 0; font-size: 1.1rem;">Storage Analytics</h2>
-                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem;" id="storageText">Calculating...</div>
-                </div>
-                <div style="width: 60%; background: rgba(255,255,255,0.1); height: 12px; border-radius: 6px; overflow: hidden;">
-                    <div id="storageBar" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.5s;"></div>
+            <!-- Sleek Storage Widget Card -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="storage-widget">
+                    <div class="storage-info-left">
+                        <div class="storage-icon-box">
+                            <svg viewBox="0 0 24 24"><path d="M20 13H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 19c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm13-16H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.95rem; color: #ffffff;">Surveillance Storage</div>
+                            <div style="color: var(--text-muted); font-size: 0.8rem; font-family: monospace; margin-top: 2px;" id="storagePathLabel">/recordings</div>
+                        </div>
+                    </div>
+                    
+                    <div class="storage-bar-wrap">
+                        <div id="storageBar" class="storage-bar-fill"></div>
+                    </div>
+
+                    <div style="font-family: monospace; font-size: 0.85rem; color: #e2e8f0; font-weight: 500;" id="storageText">
+                        Calculating...
+                    </div>
                 </div>
             </div>
 
+            <!-- Cameras Card -->
             <div class="card">
-                <h2 style="margin-top: 0; font-size: 1.2rem;">Live Status</h2>
+                <div class="flex-between" style="margin-bottom: 1.25rem;">
+                    <h2 class="card-header-title">Connected Cameras</h2>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);" id="camCountLabel"></span>
+                </div>
                 <div class="camera-grid" id="cameraGrid">Loading cameras...</div>
             </div>
         </div>
@@ -1087,11 +1129,31 @@
                 
                 if (sysRes.ok) {
                     const sys = await sysRes.json();
-                    document.getElementById('storageText').innerText = `${sys.used_gb} GB used / ${sys.total_gb} GB total`;
+                    const storageEl = document.getElementById('storageText');
+                    if (storageEl) {
+                        storageEl.innerHTML = `<span style="color:#38bdf8; font-weight:600;">${sys.used_gb} GB</span> <span style="color:#64748b;">used</span> / <span style="color:#ffffff;">${sys.total_gb} GB</span> <span style="color:#64748b;">total</span> (<span style="color:#10b981;">${sys.percent_used}%</span>)`;
+                    }
+                    const pathLabel = document.getElementById('storagePathLabel');
+                    if (pathLabel && currentConfig.storage_path) {
+                        pathLabel.innerText = currentConfig.storage_path;
+                    }
                     const bar = document.getElementById('storageBar');
-                    bar.style.width = `${sys.percent_used}%`;
-                    if (sys.percent_used > 90) bar.style.background = 'var(--danger)';
-                    else bar.style.background = 'var(--primary)';
+                    if (bar) {
+                        bar.style.width = `${sys.percent_used}%`;
+                        if (sys.percent_used > 90) {
+                            bar.style.background = 'linear-gradient(90deg, #f43f5e, #fb7185)';
+                            bar.style.boxShadow = '0 0 12px rgba(244, 63, 94, 0.6)';
+                        } else {
+                            bar.style.background = 'linear-gradient(90deg, #0284c7, #38bdf8)';
+                            bar.style.boxShadow = '0 0 10px rgba(2, 132, 199, 0.5)';
+                        }
+                    }
+                    
+                    const camCountEl = document.getElementById('camCountLabel');
+                    if (camCountEl && currentConfig.cameras) {
+                        const activeCount = (currentStatus || []).filter(s => s.recording).length;
+                        camCountEl.innerText = `${activeCount} / ${currentConfig.cameras.length} Active Streams`;
+                    }
                     
                     document.getElementById('cpuText').innerText = sys.cpu_percent + "%";
                     document.getElementById('ramText').innerText = sys.ram_percent + "%";
@@ -1182,40 +1244,55 @@
 
             filteredCams.forEach(cam => {
                 const status = currentStatus.find(s => s.id === cam.id) || {};
-                let indicatorClass = 'status-disabled';
-                let statusText = 'Disabled';
+                let badgeClass = 'cam-badge-disabled';
+                let badgeLabel = 'OFF';
                 
                 if (cam.enabled) {
                     if (status.recording) {
-                        indicatorClass = 'status-recording';
-                        statusText = 'Recording';
+                        badgeClass = 'cam-badge-recording';
+                        badgeLabel = '● REC';
                     } else {
-                        indicatorClass = 'status-stopped';
-                        statusText = 'Error / Stopped';
+                        badgeClass = 'cam-badge-stopped';
+                        badgeLabel = '● STOPPED';
                     }
                 }
 
-                let detailText = cam.brand && cam.brand !== 'custom' 
-                    ? `${cam.brand.toUpperCase()} - ${cam.ip}` 
-                    : cam.rtsp_url;
-                if (cam.group) detailText = `[${cam.group}] ` + detailText;
+                let brandTag = cam.brand ? cam.brand.toUpperCase() : 'RTSP';
+                let locationBadge = cam.group ? `<span class="cam-meta-tag" style="color:#38bdf8; border-color: rgba(2,132,199,0.3);">📍 ${cam.group}</span>` : '';
+                let quotaBadge = cam.max_quota_gb ? `<span class="cam-meta-tag">💾 ${cam.max_quota_gb} GB</span>` : '';
+                let aiBadge = cam.ai_detection !== false ? `<span class="cam-meta-tag" style="color:#a78bfa;">🤖 AI Active</span>` : '';
 
                 const card = document.createElement('div');
                 card.className = 'camera-card';
                 card.innerHTML = `
-                    <div class="flex-between">
-                        <h3 style="margin: 0; font-size: 1.1rem;">${cam.name}</h3>
-                        <div>
-                            <span class="status-indicator ${indicatorClass}"></span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted)">${statusText}</span>
+                    <div>
+                        <div class="flex-between">
+                            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 600; color: #ffffff;">${cam.name}</h3>
+                            <span class="cam-badge ${badgeClass}">${badgeLabel}</span>
+                        </div>
+                        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem;">
+                            <span class="cam-meta-tag">🏷️ ${brandTag}</span>
+                            ${locationBadge}
+                            ${aiBadge}
+                            ${quotaBadge}
+                        </div>
+                        <div class="url-truncate" title="${cam.rtsp_url}">
+                            <span style="color: #64748b;">RTSP:</span> ${cam.rtsp_url}
                         </div>
                     </div>
-                    <div class="url-truncate" title="${cam.rtsp_url}">${detailText}</div>
                     <div class="cam-actions">
-                        <button class="secondary" onclick="openViewer('${cam.id}', '${cam.name}')">View</button>
+                        <button class="secondary" style="background: rgba(2, 132, 199, 0.15); border-color: rgba(2, 132, 199, 0.3); color: #38bdf8;" onclick="openViewer('${cam.id}', '${cam.name}')">
+                            <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                            Live & Playback
+                        </button>
                         ${userRole === 'admin' ? `
-                        <button onclick="editCamera('${cam.id}')">Edit</button>
-                        <button class="danger" onclick="deleteCamera('${cam.id}')">Delete</button>
+                        <button class="secondary" onclick="editCamera('${cam.id}')" title="Edit Settings">
+                            <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            Edit
+                        </button>
+                        <button class="danger" style="max-width: 42px; padding: 0.45rem;" onclick="deleteCamera('${cam.id}')" title="Delete Camera">
+                            <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
                         ` : ''}
                     </div>
                 `;
@@ -2897,6 +2974,16 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch(e => console.log("SW register fail:", e));
         }
+
+        // Live Clock in Header
+        function updateLiveClock() {
+            const el = document.getElementById('headerClock');
+            if (!el) return;
+            const now = new Date();
+            el.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
 
         initChart();
         fetchData();
