@@ -797,6 +797,28 @@
                 <p style="color: var(--text-muted);">Restarting the engine will stop and restart all FFmpeg recording streams.</p>
                 <button class="danger" onclick="restartEngine()" id="btnRestart">Restart NVR Engine</button>
             </div>
+
+            <div class="card">
+                <h2 style="margin-top: 0; font-size: 1.1rem;">Build & System Information</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Software Release</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #38bdf8; margin-top: 0.2rem;">v1.5.0</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Build Version</div>
+                        <div style="font-size: 0.95rem; font-weight: 600; font-family: monospace; color: #ffffff; margin-top: 0.2rem;">20260831.01</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Engine Framework</div>
+                        <div style="font-size: 0.9rem; font-weight: 500; color: #cbd5e1; margin-top: 0.2rem;">Python 3.10 + FFmpeg</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 0.85rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Environment</div>
+                        <div style="font-size: 0.9rem; font-weight: 500; color: #10b981; margin-top: 0.2rem;">Docker Linux Container</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- PAGE 3: Security -->
@@ -824,6 +846,11 @@
                 </div>
                 <div class="log-box" id="logBox">Loading...</div>
             </div>
+        </div>
+
+        <div style="text-align: center; font-size: 0.78rem; color: #64748b; margin-top: 3rem; padding: 1.25rem 0; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <span>NVR Surveillance Station &bull; Python Recording Engine</span>
+            <span>Release: <b style="color: #38bdf8;">v1.5.0</b> &bull; Build: <b style="color: #cbd5e1; font-family: monospace;">20260831.01</b></span>
         </div>
     </div> <!-- end container -->
 
