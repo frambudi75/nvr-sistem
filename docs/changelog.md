@@ -6,6 +6,19 @@ Format berkas ini mengikuti prinsip [Keep a Changelog](https://keepachangelog.co
 
 ---
 
+## [v1.5.0] - 2026-08-31
+### Ditambahkan
+* **Progressive Web App (PWA) Mobile Support:** Web App Manifest dan Service Worker agar dashboard NVR dapat diinstal langsung di layar beranda ponsel Android dan iOS.
+* **Quick Siren Alarm (Web Audio API):** Tombol sirene darurat satu klik dengan synthesizer suara alarm berdenyut yang kencang tanpa memerlukan file audio eksternal.
+* **Low-Latency Streaming & Audio Support (HLS Engine):** Dukungan pemutar HLS modern (`hls.js`) dengan audio pass-through langsung dari mikrofon kamera CCTV ke browser.
+* **Interactive Floor Plan (Denah Interaktif):** Fitur unggah gambar denah rumah/gedung dan meletakkan pin kamera interaktif dengan live status dan klik untuk preview seketika.
+* **Camera Area / Location Grouping:** Pengelompokan kamera berdasarkan lokasi (misal: *Outdoor, Lantai 1, Gudang*) dengan filter instan di dashboard.
+* **Remote Backup & NAS Cloud Sync:** Pencadangan otomatis dan manual ke Telegram Channel (snapshot harian) serta folder penyimpanan sekunder (NAS/SMB).
+* **Toggle AI Detection per Kamera:** Kontrol individual untuk mengaktifkan atau menonaktifkan proses AI deteksi manusia dan notifikasi per kamera.
+* **Pembersihan Penyimpanan Manual:** Opsi penghapusan rekaman berdasarkan umur hari, per kamera, snapshot AI, dan per tanggal rekaman di pemutar video.
+
+---
+
 ## [v1.4.0] - 2026-08-15
 ### Ditambahkan
 * **Fail-Safe Mechanism pada NVR Engine:** Pembungkusan modul AI (`AIDetector`) dalam penanganan error fleksibel agar kegagalan library Computer Vision tidak menggagalkan fungsi utama perekam dan web dashboard.

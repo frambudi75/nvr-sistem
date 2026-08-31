@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NVR Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0284c7">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%230b0f19'/%3E%3Ccircle cx='50' cy='50' r='18' fill='none' stroke='%2306b6d4' stroke-width='8'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23ef4444'/%3E%3Cpath d='M25 50 H32 M68 50 H75' stroke='%2306b6d4' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
     <style>
         :root {
@@ -420,8 +423,9 @@
                 <h1>NVR Dashboard</h1>
                 <p style="color: var(--text-muted); margin-top: 5px;">Python Powered Recording Engine</p>
             </div>
-            <div style="display: flex; gap: 1rem;">
-                <button class="danger" onclick="window.location.href='/logout'">Logout</button>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <button id="btnSiren" class="danger" style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="toggleSirenAlarm()">🚨 Siren Alarm</button>
+                <button class="secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="window.location.href='/logout'">Logout</button>
             </div>
         </header>
 
@@ -429,6 +433,10 @@
             <div class="nav-tab active" onclick="switchMainTab('dashboard')">
                 <svg viewBox="0 0 24 24"><path d="M4 13h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1zm0 8h6a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1zm10-12h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1zm0 12h6a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1z"/></svg>
                 Dashboard
+            </div>
+            <div class="nav-tab" onclick="switchMainTab('floorplan')">
+                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                Floor Plan
             </div>
             {% if role == 'admin' %}
             <div class="nav-tab" onclick="switchMainTab('system')">
@@ -452,11 +460,18 @@
 
         <!-- PAGE 1: Dashboard -->
         <div id="page-dashboard" class="page active">
-            <div style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: flex-end;">
-                <button class="secondary" onclick="openGridView()">Grid View</button>
-                {% if role == 'admin' %}
-                <button onclick="openAddCameraModal()">+ Add Camera</button>
-                {% endif %}
+            <div style="margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: flex-between; align-items: center; flex-wrap: wrap;">
+                <!-- Location Group Filter Bar -->
+                <div id="groupFilterBar" style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; flex: 1;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 0.25rem;">Area:</span>
+                    <button class="secondary active" style="padding: 0.25rem 0.75rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('all', event)">All</button>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="secondary" onclick="openGridView()">Grid View</button>
+                    {% if role == 'admin' %}
+                    <button onclick="openAddCameraModal()">+ Add Camera</button>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="card" style="display: flex; align-items: center; justify-content: space-between;">
@@ -578,6 +593,91 @@
                     <button class="danger" onclick="triggerManualCleanup('alerts')" id="btnCleanAlerts" style="white-space: nowrap; font-size: 0.85rem;">🗑️ Hapus Semua Snapshot AI</button>
                 </div>
             </div>
+
+            <!-- Remote Backup & NAS Sync Card -->
+            <div class="card">
+                <h2 style="margin-top: 0; font-size: 1.2rem;">☁️ Remote Backup & NAS Cloud Sync</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Cadangkan rekaman & snapshot AI ke Telegram Channel atau folder penyimpanan eksternal (NAS/SMB).</p>
+                
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                    <input type="checkbox" id="backupEnabled" style="width: auto;">
+                    <label style="margin: 0; cursor: pointer; color: var(--text-main);" for="backupEnabled">Aktifkan Backup Otomatis Terjadwal (Setiap 1 Jam)</label>
+                </div>
+
+                <div class="grid-2" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label>Folder Target Backup (Lokal / NAS Mount Path)</label>
+                        <input type="text" id="backupTargetPath" placeholder="e.g. /backup atau /mnt/nas/nvr">
+                    </div>
+                    <div class="form-group">
+                        <label>Salin Rekaman N Hari Terakhir</label>
+                        <input type="number" id="backupRecentDays" value="1" min="1">
+                    </div>
+                </div>
+
+                <h4 style="font-size: 0.95rem; color: var(--primary); margin: 1rem 0 0.5rem 0;">Telegram Channel Snapshot Backup</h4>
+                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <input type="checkbox" id="backupTgEnabled" style="width: auto;">
+                    <label style="margin: 0; cursor: pointer;" for="backupTgEnabled">Upload Otomatis Snapshot Alert Hari Ini ke Telegram Channel</label>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Telegram Bot Token</label>
+                        <input type="password" id="backupTgToken" placeholder="123456789:ABCdef...">
+                    </div>
+                    <div class="form-group">
+                        <label>Telegram Channel / Chat ID</label>
+                        <input type="text" id="backupTgChatId" placeholder="-100123456789">
+                    </div>
+                </div>
+
+                <div style="background: rgba(0,0,0,0.3); padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem; color: var(--text-muted); margin-top: 1rem;" id="backupStatusBox">
+                    Status Backup Terakhir: <span id="backupStatusText" style="color: var(--text-main);">Belum dijalankan</span>
+                </div>
+
+                <div class="actions" style="justify-content: flex-start; margin-top: 1.25rem; gap: 1rem;">
+                    <button onclick="saveBackupSettings()">Save Backup Settings</button>
+                    <button class="secondary" onclick="triggerManualBackup()" id="btnRunBackup">⚡ Trigger Backup Now</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: Floor Plan -->
+        <div id="page-floorplan" class="page">
+            <div class="card">
+                <div class="flex-between" style="margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 1.2rem;">🗺️ Interactive Floor Plan (Peta Denah)</h2>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0.2rem 0 0 0;">Denah interaktif lokasi CCTV. Klik pin kamera untuk melihat live preview seketika.</p>
+                    </div>
+                    {% if role == 'admin' %}
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="file" id="floorplanFileInput" accept="image/*" style="display: none;" onchange="uploadFloorplan()">
+                        <button class="secondary" style="font-size: 0.85rem;" onclick="document.getElementById('floorplanFileInput').click()">📤 Upload Blueprint</button>
+                        <button class="secondary" id="btnToggleFloorEdit" style="font-size: 0.85rem;" onclick="toggleFloorplanEditMode()">✏️ Edit Pins</button>
+                        <button id="btnSaveFloorPins" style="display: none; font-size: 0.85rem;" onclick="saveFloorplanPins()">💾 Save Pins</button>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Add Pin Selector (Visible in Edit Mode) -->
+                <div id="floorplanEditBar" style="display: none; background: rgba(2, 132, 199, 0.15); border: 1px solid var(--primary); padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <span style="font-size: 0.85rem; font-weight: 500;">Pilih Kamera untuk Diletakkan:</span>
+                    <select id="floorplanCamSelect" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; background: #111827; color: white; border: 1px solid var(--border); border-radius: 4px;"></select>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Lalu klik pada gambar denah di bawah untuk menaruh pin.</span>
+                </div>
+
+                <div id="floorplanContainer" style="position: relative; width: 100%; min-height: 400px; background: rgba(0,0,0,0.3); border: 1px dashed var(--border); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; user-select: none;" onclick="handleFloorplanClick(event)">
+                    <img id="floorplanImg" src="/api/floorplan/image" style="width: 100%; height: auto; display: block;" onerror="handleFloorplanImgError(this)" onload="handleFloorplanImgSuccess(this)">
+                    <div id="floorplanNoImgMsg" style="color: var(--text-muted); text-align: center; padding: 3rem 1rem;">
+                        🗺️ <b>Belum ada gambar denah yang diunggah.</b><br>
+                        {% if role == 'admin' %}
+                        <small>Klik tombol <b>Upload Blueprint</b> di atas untuk mengunggah denah rumah/gedung Anda (JPG/PNG).</small>
+                        {% endif %}
+                    </div>
+                    <div id="floorplanPinsLayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- PAGE 2: System Monitor -->
@@ -676,13 +776,24 @@
                 <h2 id="viewerTitle" style="margin: 0;">Camera View</h2>
                 <button style="background: transparent; padding: 0.5rem; color: var(--text-muted);" onclick="closeViewer()">✕ Close</button>
             </div>
-            <div class="tabs">
-                <div class="tab active" id="tabLive" onclick="switchViewerTab('live')">Live Preview</div>
-                <div class="tab" id="tabPlayback" onclick="switchViewerTab('playback')">Playback</div>
+            <div class="tabs" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <div class="tab active" id="tabLive" onclick="switchViewerTab('live')">Live Preview</div>
+                    <div class="tab" id="tabPlayback" onclick="switchViewerTab('playback')">Playback</div>
+                </div>
+                <!-- Live Stream Mode Selector -->
+                <div id="liveStreamModeContainer" style="display: flex; align-items: center; gap: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Mode:</span>
+                    <select id="liveStreamMode" onchange="changeLiveStreamMode()" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px; background: rgba(0,0,0,0.4); color: white; border: 1px solid var(--border);">
+                        <option value="mjpeg">⚡ MJPEG (Fast)</option>
+                        <option value="hls">🔊 HLS (Audio Support)</option>
+                    </select>
+                </div>
             </div>
             <div class="viewer-container active" id="viewLive">
                 <div class="live-stream-box">
                     <img id="liveStreamImg" src="" alt="Loading stream..." onerror="this.onerror=null; this.alt='Stream unavailable or disconnected'; this.src='';">
+                    <video id="liveHlsVideo" controls autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: contain; background: black;"></video>
                     <canvas id="motionCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
                     
                     <!-- Snapshot Button -->
@@ -836,6 +947,12 @@
                     <input type="number" id="camQuota" placeholder="e.g. 20" value="0" step="0.1">
                 </div>
 
+                <!-- Location / Group -->
+                <div class="form-group">
+                    <label>Location / Area Group</label>
+                    <input type="text" id="camGroup" placeholder="e.g. Outdoor, Lantai 1, Gudang, Parkiran">
+                </div>
+
                 <!-- AI Human Detection Toggle -->
                 <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">
                     <input type="checkbox" id="camAiDetection" style="width: auto;" checked>
@@ -896,6 +1013,8 @@
 
             if(tabId === 'logs') fetchLogs();
             if(tabId === 'system') fetchStorageAnalytics();
+            if(tabId === 'floorplan') loadFloorplanPins();
+            if(tabId === 'settings') fetchBackupStatus();
         }
 
         async function fetchData() {
@@ -972,6 +1091,8 @@
             const tg = notif.telegram || {};
             const dc = notif.discord || {};
             const smart = currentConfig.smart_cleanup || {};
+            const backup = currentConfig.backup || {};
+            const bkpTg = backup.telegram || {};
 
             setCheckedIfInactive('notifTgEnabled', !!tg.enabled);
             setIfInactive('notifTgToken', tg.bot_token || '');
@@ -982,15 +1103,32 @@
             
             setIfInactive('smartMinFree', smart.min_free_gb !== undefined ? smart.min_free_gb : 5);
 
+            // Load Backup config fields
+            setCheckedIfInactive('backupEnabled', !!backup.enabled);
+            setIfInactive('backupTargetPath', backup.target_path || '');
+            setIfInactive('backupRecentDays', backup.backup_recent_days || 1);
+            setCheckedIfInactive('backupTgEnabled', !!bkpTg.enabled);
+            setIfInactive('backupTgToken', bkpTg.bot_token || '');
+            setIfInactive('backupTgChatId', bkpTg.chat_id || '');
+
+            updateGroupFilterBar();
+
             const grid = document.getElementById('cameraGrid');
             grid.innerHTML = '';
             
-            if (!currentConfig.cameras || currentConfig.cameras.length === 0) {
-                grid.innerHTML = '<p style="color: var(--text-muted)">No cameras configured yet.</p>';
+            const allCams = currentConfig.cameras || [];
+            const filteredCams = allCams.filter(cam => {
+                if (selectedCameraGroup === 'all') return true;
+                return (cam.group || '').trim() === selectedCameraGroup;
+            });
+
+            if (filteredCams.length === 0) {
+                grid.innerHTML = '<p style="color: var(--text-muted)">Tidak ada kamera di area ini.</p>';
+                updateCleanupCameraDropdown();
                 return;
             }
 
-            currentConfig.cameras.forEach(cam => {
+            filteredCams.forEach(cam => {
                 const status = currentStatus.find(s => s.id === cam.id) || {};
                 let indicatorClass = 'status-disabled';
                 let statusText = 'Disabled';
@@ -1008,6 +1146,7 @@
                 let detailText = cam.brand && cam.brand !== 'custom' 
                     ? `${cam.brand.toUpperCase()} - ${cam.ip}` 
                     : cam.rtsp_url;
+                if (cam.group) detailText = `[${cam.group}] ` + detailText;
 
                 const card = document.createElement('div');
                 card.className = 'camera-card';
@@ -1079,15 +1218,14 @@
         function closeViewer() {
             document.getElementById('viewerModal').classList.remove('active');
             
-            // Reset zoom scale
-            const liveImg = document.getElementById('liveStreamImg');
-            if (liveImg && liveImg.resetZoom) liveImg.resetZoom();
+            stopLiveStream();
+            
             const vid = document.getElementById('playbackVideo');
             if (vid && vid.resetZoom) vid.resetZoom();
-            
-            liveImg.src = "";
-            vid.pause();
-            vid.src = "";
+            if (vid) {
+                vid.pause();
+                vid.src = "";
+            }
             currentViewCamId = null;
             
             // Reset playback variables
@@ -1104,17 +1242,14 @@
             document.getElementById('viewLive').classList.remove('active');
             document.getElementById('viewPlayback').classList.remove('active');
             
-            // Reset zoom scale when switching tabs
-            const liveImg = document.getElementById('liveStreamImg');
-            if (liveImg && liveImg.resetZoom) liveImg.resetZoom();
             const vid = document.getElementById('playbackVideo');
             if (vid && vid.resetZoom) vid.resetZoom();
             
             if (tab === 'live') {
                 document.getElementById('tabLive').classList.add('active');
                 document.getElementById('viewLive').classList.add('active');
-                document.getElementById('liveStreamImg').src = `/api/stream/${currentViewCamId}?t=${new Date().getTime()}`;
-                document.getElementById('playbackVideo').pause();
+                startLiveStream(currentViewCamId);
+                if (vid) vid.pause();
                 
                 const cam = currentConfig.cameras.find(c => c.id === currentViewCamId);
                 const ptz = document.getElementById('ptzControls');
@@ -1124,7 +1259,7 @@
             } else {
                 document.getElementById('tabPlayback').classList.add('active');
                 document.getElementById('viewPlayback').classList.add('active');
-                document.getElementById('liveStreamImg').src = "";
+                stopLiveStream();
                 loadRecordings(currentViewCamId);
             }
         }
@@ -1632,6 +1767,7 @@
             document.getElementById('camEnabled').checked = true;
             document.getElementById('camAiDetection').checked = true;
             document.getElementById('camQuota').value = '0';
+            document.getElementById('camGroup').value = '';
             document.getElementById('camSchedEnabled').checked = false;
             document.getElementById('camSchedStart').value = '18:00';
             document.getElementById('camSchedEnd').value = '06:00';
@@ -1658,6 +1794,7 @@
             document.getElementById('camEnabled').checked = cam.enabled !== false;
             document.getElementById('camAiDetection').checked = cam.ai_detection !== false;
             document.getElementById('camQuota').value = cam.max_quota_gb || '0';
+            document.getElementById('camGroup').value = cam.group || '';
             
             const sched = cam.schedule || { enabled: false, start: '18:00', end: '06:00' };
             document.getElementById('camSchedEnabled').checked = sched.enabled;
@@ -1720,6 +1857,9 @@
             
             const quota = parseFloat(document.getElementById('camQuota').value) || 0;
             if (quota > 0) camData.max_quota_gb = quota;
+            
+            const group = document.getElementById('camGroup').value.trim();
+            if (group) camData.group = group;
             
             camData.schedule = {
                 enabled: document.getElementById('camSchedEnabled').checked,
@@ -2267,10 +2407,366 @@
             }
         }
 
+        /* --- Location Group Filtering --- */
+        let selectedCameraGroup = 'all';
+
+        function filterCameraGroup(group, event) {
+            selectedCameraGroup = group;
+            document.querySelectorAll('#groupFilterBar button').forEach(btn => btn.classList.remove('active'));
+            if (event && event.target) event.target.classList.add('active');
+            renderDashboard();
+        }
+
+        function updateGroupFilterBar() {
+            const bar = document.getElementById('groupFilterBar');
+            if (!bar) return;
+            const groups = new Set(['all']);
+            if (currentConfig.cameras) {
+                currentConfig.cameras.forEach(c => {
+                    if (c.group && c.group.trim()) groups.add(c.group.trim());
+                });
+            }
+            bar.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 0.25rem;">Area:</span>';
+            groups.forEach(g => {
+                const isActive = g === selectedCameraGroup ? 'active' : '';
+                const label = g === 'all' ? 'All' : g;
+                bar.innerHTML += `<button class="secondary ${isActive}" style="padding: 0.25rem 0.75rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('${g}', event)">${label}</button>`;
+            });
+        }
+
+        /* --- Live Stream Player (HLS / MJPEG) --- */
+        let currentHls = null;
+        let currentLiveMode = 'mjpeg';
+
+        function changeLiveStreamMode() {
+            currentLiveMode = document.getElementById('liveStreamMode').value;
+            if (currentViewCamId) {
+                startLiveStream(currentViewCamId);
+            }
+        }
+
+        function startLiveStream(camId) {
+            const img = document.getElementById('liveStreamImg');
+            const video = document.getElementById('liveHlsVideo');
+            
+            stopLiveStream();
+            
+            if (currentLiveMode === 'hls') {
+                img.style.display = 'none';
+                video.style.display = 'block';
+                
+                const hlsUrl = `/api/hls/${camId}/index.m3u8`;
+                if (Hls.isSupported()) {
+                    currentHls = new Hls({
+                        liveSyncDurationCount: 2,
+                        liveMaxLatencyDurationCount: 3,
+                        maxBufferLength: 4
+                    });
+                    currentHls.loadSource(hlsUrl);
+                    currentHls.attachMedia(video);
+                    currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        video.play().catch(e => console.log("HLS play error:", e));
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = hlsUrl;
+                    video.play().catch(e => console.log("Safari HLS play error:", e));
+                }
+            } else {
+                video.style.display = 'none';
+                img.style.display = 'block';
+                img.src = `/api/stream/${camId}?t=${new Date().getTime()}`;
+            }
+        }
+
+        function stopLiveStream() {
+            const img = document.getElementById('liveStreamImg');
+            const video = document.getElementById('liveHlsVideo');
+            
+            if (img) img.src = '';
+            if (currentHls) {
+                currentHls.destroy();
+                currentHls = null;
+            }
+            if (video) {
+                video.pause();
+                video.src = '';
+                video.load();
+            }
+        }
+
+        /* --- Web Audio Siren Alarm --- */
+        let sirenAudioCtx = null;
+        let sirenOscillator = null;
+        let sirenGain = null;
+        let isSirenActive = false;
+        let sirenInterval = null;
+
+        function toggleSirenAlarm() {
+            const btn = document.getElementById('btnSiren');
+            if (!isSirenActive) {
+                try {
+                    sirenAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    sirenOscillator = sirenAudioCtx.createOscillator();
+                    sirenGain = sirenAudioCtx.createGain();
+                    
+                    sirenOscillator.type = 'sawtooth';
+                    sirenOscillator.frequency.setValueAtTime(600, sirenAudioCtx.currentTime);
+                    sirenGain.gain.setValueAtTime(0.4, sirenAudioCtx.currentTime);
+                    
+                    sirenOscillator.connect(sirenGain);
+                    sirenGain.connect(sirenAudioCtx.destination);
+                    sirenOscillator.start();
+                    
+                    let rising = true;
+                    sirenInterval = setInterval(() => {
+                        if (!sirenAudioCtx) return;
+                        const now = sirenAudioCtx.currentTime;
+                        if (rising) {
+                            sirenOscillator.frequency.linearRampToValueAtTime(1200, now + 0.35);
+                            rising = false;
+                        } else {
+                            sirenOscillator.frequency.linearRampToValueAtTime(500, now + 0.35);
+                            rising = true;
+                        }
+                    }, 350);
+                    
+                    isSirenActive = true;
+                    btn.innerText = "🛑 STOP SIREN";
+                    btn.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.8)";
+                } catch (e) {
+                    alert("Audio error: " + e.message);
+                }
+            } else {
+                if (sirenInterval) clearInterval(sirenInterval);
+                if (sirenOscillator) {
+                    try { sirenOscillator.stop(); sirenOscillator.disconnect(); } catch(e){}
+                }
+                if (sirenAudioCtx) {
+                    try { sirenAudioCtx.close(); } catch(e){}
+                }
+                sirenAudioCtx = null;
+                sirenOscillator = null;
+                isSirenActive = false;
+                btn.innerText = "🚨 Siren Alarm";
+                btn.style.boxShadow = "none";
+            }
+        }
+
+        /* --- Floor Plan Interactive Blueprint --- */
+        let floorplanPins = [];
+        let isFloorplanEditMode = false;
+
+        function handleFloorplanImgSuccess(img) {
+            document.getElementById('floorplanNoImgMsg').style.display = 'none';
+            img.style.display = 'block';
+            renderFloorplanPins();
+        }
+
+        function handleFloorplanImgError(img) {
+            img.style.display = 'none';
+            document.getElementById('floorplanNoImgMsg').style.display = 'block';
+        }
+
+        async function uploadFloorplan() {
+            const input = document.getElementById('floorplanFileInput');
+            if (!input.files || input.files.length === 0) return;
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            
+            try {
+                const res = await fetch('/api/floorplan/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert("Denah berhasil diunggah!");
+                    const img = document.getElementById('floorplanImg');
+                    img.src = '/api/floorplan/image?t=' + new Date().getTime();
+                } else {
+                    alert("Gagal: " + (data.message || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Upload error: " + e.message);
+            }
+        }
+
+        function toggleFloorplanEditMode() {
+            isFloorplanEditMode = !isFloorplanEditMode;
+            const btn = document.getElementById('btnToggleFloorEdit');
+            const saveBtn = document.getElementById('btnSaveFloorPins');
+            const editBar = document.getElementById('floorplanEditBar');
+            
+            if (isFloorplanEditMode) {
+                btn.innerText = "✕ Cancel Edit";
+                if (saveBtn) saveBtn.style.display = "inline-block";
+                if (editBar) editBar.style.display = "flex";
+                
+                const sel = document.getElementById('floorplanCamSelect');
+                if (sel) {
+                    sel.innerHTML = '';
+                    (currentConfig.cameras || []).forEach(c => {
+                        sel.innerHTML += `<option value="${c.id}">${c.name} (${c.id})</option>`;
+                    });
+                }
+            } else {
+                btn.innerText = "✏️ Edit Pins";
+                if (saveBtn) saveBtn.style.display = "none";
+                if (editBar) editBar.style.display = "none";
+            }
+            renderFloorplanPins();
+        }
+
+        function handleFloorplanClick(e) {
+            if (!isFloorplanEditMode) return;
+            const container = document.getElementById('floorplanContainer');
+            const rect = container.getBoundingClientRect();
+            
+            const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+            const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            const sel = document.getElementById('floorplanCamSelect');
+            const camId = sel ? sel.value : null;
+            if (!camId) return;
+            
+            floorplanPins = floorplanPins.filter(p => p.cam_id !== camId);
+            floorplanPins.push({
+                cam_id: camId,
+                x: Math.round(xPercent * 10) / 10,
+                y: Math.round(yPercent * 10) / 10
+            });
+            
+            renderFloorplanPins();
+        }
+
+        function renderFloorplanPins() {
+            const layer = document.getElementById('floorplanPinsLayer');
+            if (!layer) return;
+            layer.innerHTML = '';
+            
+            floorplanPins.forEach(pin => {
+                const cam = (currentConfig.cameras || []).find(c => c.id === pin.cam_id) || { name: pin.cam_id };
+                const status = (currentStatus || []).find(s => s.id === pin.cam_id) || {};
+                const isOnline = status.recording;
+                
+                const pinEl = document.createElement('div');
+                pinEl.style.position = 'absolute';
+                pinEl.style.left = `${pin.x}%`;
+                pinEl.style.top = `${pin.y}%`;
+                pinEl.style.transform = 'translate(-50%, -50%)';
+                pinEl.style.pointerEvents = 'auto';
+                pinEl.style.cursor = 'pointer';
+                pinEl.style.zIndex = '10';
+                
+                pinEl.innerHTML = `
+                    <div style="background: ${isOnline ? 'var(--success)' : 'var(--danger)'}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 12px ${isOnline ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'}; border: 2px solid white; transition: transform 0.2s;">
+                        <svg style="width: 14px; height: 14px; fill: white;" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                    </div>
+                    <div style="position: absolute; top: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; white-space: nowrap; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1);">
+                        ${cam.name}
+                    </div>
+                `;
+                
+                pinEl.onmouseenter = () => { pinEl.firstElementChild.style.transform = 'scale(1.2)'; };
+                pinEl.onmouseleave = () => { pinEl.firstElementChild.style.transform = 'scale(1)'; };
+                
+                pinEl.onclick = (ev) => {
+                    ev.stopPropagation();
+                    if (!isFloorplanEditMode) {
+                        openViewer(pin.cam_id, cam.name);
+                    }
+                };
+                
+                layer.appendChild(pinEl);
+            });
+        }
+
+        async function loadFloorplanPins() {
+            try {
+                const res = await fetch('/api/floorplan/pins');
+                if (res.ok) {
+                    floorplanPins = await res.json();
+                    renderFloorplanPins();
+                }
+            } catch(e){}
+        }
+
+        async function saveFloorplanPins() {
+            try {
+                const res = await fetch('/api/floorplan/pins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(floorplanPins)
+                });
+                if (res.ok) {
+                    alert("Pin kamera pada denah berhasil disimpan!");
+                    toggleFloorplanEditMode();
+                }
+            } catch (e) {
+                alert("Gagal menyimpan pin: " + e.message);
+            }
+        }
+
+        /* --- Remote Backup Settings --- */
+        async function fetchBackupStatus() {
+            try {
+                const res = await fetch('/api/backup/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    const box = document.getElementById('backupStatusText');
+                    if (box) {
+                        box.innerText = `${data.status} | Terakhir: ${data.last_run || '-'} | ${data.message || ''}`;
+                    }
+                }
+            } catch(e){}
+        }
+
+        async function saveBackupSettings() {
+            if (!currentConfig.backup) currentConfig.backup = {};
+            if (!currentConfig.backup.telegram) currentConfig.backup.telegram = {};
+            
+            currentConfig.backup.enabled = document.getElementById('backupEnabled').checked;
+            currentConfig.backup.target_path = document.getElementById('backupTargetPath').value.trim();
+            currentConfig.backup.backup_recent_days = parseInt(document.getElementById('backupRecentDays').value) || 1;
+            
+            currentConfig.backup.telegram.enabled = document.getElementById('backupTgEnabled').checked;
+            currentConfig.backup.telegram.bot_token = document.getElementById('backupTgToken').value.trim();
+            currentConfig.backup.telegram.chat_id = document.getElementById('backupTgChatId').value.trim();
+            
+            await saveConfigToServer();
+            alert("Pengaturan Remote Backup berhasil disimpan!");
+        }
+
+        async function triggerManualBackup() {
+            const btn = document.getElementById('btnRunBackup');
+            const orig = btn.innerText;
+            btn.innerText = "Backing up..."; btn.disabled = true;
+            try {
+                const res = await fetch('/api/backup/trigger', { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`Backup selesai!\n\nStatus: ${data.status}\nBerkas: ${data.backed_up_files || 0}\nUkuran: ${data.copied_mb || 0} MB\n\nPesan:\n${data.message}`);
+                    fetchBackupStatus();
+                } else {
+                    alert("Gagal: " + (data.message || "Unknown error"));
+                }
+            } catch(e) {
+                alert("Request error: " + e.message);
+            } finally {
+                btn.innerText = orig; btn.disabled = false;
+            }
+        }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(e => console.log("SW register fail:", e));
+        }
+
         initChart();
         fetchData();
         setInterval(fetchData, 5000);
-        setInterval(detectMotion, 150); // Run motion detection at ~7 FPS
+        setInterval(detectMotion, 150);
     </script>
 </body>
 </html>

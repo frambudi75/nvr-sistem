@@ -312,6 +312,21 @@ def cleanup_worker(nvr_manager, interval=600):
         time.sleep(interval)
 
 
+def backup_worker(nvr_manager, interval=3600):
+    """Runs scheduled backups periodically (every 1 hour by default if enabled)."""
+    while True:
+        try:
+            backup_cfg = nvr_manager.config.get("backup", {})
+            if backup_cfg.get("enabled", False):
+                from backup import BackupManager
+                bm = BackupManager(nvr_manager.config, nvr_manager.storage_path)
+                nvr_manager.backup_manager = bm
+                bm.run_backup()
+        except Exception as e:
+            logger.error(f"Error in backup worker: {e}")
+        time.sleep(interval)
+
+
 def main():
     logger.info("Starting NVR Engine...")
     
@@ -324,6 +339,10 @@ def main():
     # Start cleanup thread (runs every 10 minutes / 600s)
     cleanup_thread = threading.Thread(target=cleanup_worker, args=(nvr, 600), daemon=True)
     cleanup_thread.start()
+
+    # Start backup thread (runs every 1 hour / 3600s)
+    backup_thread = threading.Thread(target=backup_worker, args=(nvr, 3600), daemon=True)
+    backup_thread.start()
 
     # Start Web Server in a daemon thread
     web_thread = threading.Thread(target=start_web_server, args=(nvr, 5000), daemon=True)

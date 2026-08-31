@@ -4,6 +4,7 @@ import logging
 import subprocess
 import os
 import time
+import threading
 import glob
 import shutil
 import psutil
@@ -70,6 +71,21 @@ def logout():
     session.pop('logged_in', None)
     return redirect(url_for('login'))
 
+
+@app.route("/manifest.json")
+def manifest():
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+    return send_from_directory(static_dir, 'manifest.json', mimetype='application/manifest+json')
+
+@app.route("/sw.js")
+def service_worker():
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+    return send_from_directory(static_dir, 'sw.js', mimetype='application/javascript')
+
+@app.route("/static/<path:filename>")
+def serve_static(filename):
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+    return send_from_directory(static_dir, filename)
 
 @app.route("/")
 @login_required
@@ -356,6 +372,137 @@ def stream_camera(cam_id):
         return "RTSP URL missing", 404
         
     return Response(generate_mjpeg_stream(rtsp_url), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# --- Low-Latency HLS & Audio Stream Engine ---
+import tempfile
+hls_sessions = {}
+hls_lock = threading.Lock()
+
+def get_or_start_hls_stream(cam_id, rtsp_url):
+    with hls_lock:
+        now = time.time()
+        temp_base = tempfile.gettempdir()
+        hls_dir = os.path.join(temp_base, f"nvr_hls_{cam_id}")
+        os.makedirs(hls_dir, exist_ok=True)
+        
+        session = hls_sessions.get(cam_id)
+        if session and session["process"].poll() is None:
+            session["last_active"] = now
+            return hls_dir
+            
+        for f in glob.glob(os.path.join(hls_dir, "*")):
+            try: os.remove(f)
+            except: pass
+            
+        cmd = [
+            "ffmpeg", "-y",
+            "-rtsp_transport", "tcp",
+            "-i", rtsp_url,
+            "-c:v", "copy",
+            "-c:a", "aac", "-b:a", "64k",
+            "-f", "hls",
+            "-hls_time", "1",
+            "-hls_list_size", "3",
+            "-hls_flags", "delete_segments+split_by_time+temp_file",
+            os.path.join(hls_dir, "index.m3u8")
+        ]
+        
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        hls_sessions[cam_id] = {
+            "process": proc,
+            "last_active": now,
+            "dir": hls_dir
+        }
+        return hls_dir
+
+@app.route("/api/hls/<cam_id>/index.m3u8")
+@login_required
+def hls_playlist(cam_id):
+    cameras_config = {cam["id"]: cam for cam in nvr_manager.config.get("cameras", [])}
+    if cam_id not in cameras_config:
+        return "Camera not found", 404
+        
+    rtsp_url = cameras_config[cam_id].get("rtsp_url")
+    if not rtsp_url:
+        return "RTSP URL missing", 404
+        
+    hls_dir = get_or_start_hls_stream(cam_id, rtsp_url)
+    playlist_path = os.path.join(hls_dir, "index.m3u8")
+    
+    for _ in range(30):
+        if os.path.exists(playlist_path) and os.path.getsize(playlist_path) > 0:
+            break
+        time.sleep(0.1)
+        
+    if not os.path.exists(playlist_path):
+        return "Stream initializing, retry shortly", 503
+        
+    resp = send_from_directory(hls_dir, "index.m3u8", mimetype="application/vnd.apple.mpegurl")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+@app.route("/api/hls/<cam_id>/<path:segment>")
+@login_required
+def hls_segment(cam_id, segment):
+    temp_base = tempfile.gettempdir()
+    hls_dir = os.path.join(temp_base, f"nvr_hls_{cam_id}")
+    if cam_id in hls_sessions:
+        hls_sessions[cam_id]["last_active"] = time.time()
+    return send_from_directory(hls_dir, segment, mimetype="video/MP2T")
+
+# --- Floor Plan & Remote Backup Routes ---
+@app.route("/api/floorplan/image", methods=["GET"])
+@login_required
+def get_floorplan_image():
+    floorplan_file = os.path.join(nvr_manager.storage_path, "floorplan.jpg")
+    if not os.path.exists(floorplan_file):
+        return "No floorplan uploaded", 404
+    return send_from_directory(nvr_manager.storage_path, "floorplan.jpg", mimetype="image/jpeg")
+
+@app.route("/api/floorplan/upload", methods=["POST"])
+@admin_required
+def upload_floorplan_image():
+    if "file" not in request.files:
+        return jsonify({"status": "error", "message": "No file uploaded"}), 400
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"status": "error", "message": "Empty filename"}), 400
+    
+    floorplan_file = os.path.join(nvr_manager.storage_path, "floorplan.jpg")
+    file.save(floorplan_file)
+    return jsonify({"status": "success", "message": "Floorplan image saved successfully."}), 200
+
+@app.route("/api/floorplan/pins", methods=["GET", "POST"])
+@login_required
+def handle_floorplan_pins():
+    if request.method == "POST":
+        if session.get("role") != "admin":
+            return jsonify({"status": "error", "message": "Admin required"}), 403
+        data = request.json or []
+        nvr_manager.config["floorplan_pins"] = data
+        nvr_manager.save_config()
+        return jsonify({"status": "success", "message": "Pins updated"}), 200
+    else:
+        return jsonify(nvr_manager.config.get("floorplan_pins", []))
+
+@app.route("/api/backup/trigger", methods=["POST"])
+@admin_required
+def trigger_backup_route():
+    try:
+        from backup import BackupManager
+        bm = BackupManager(nvr_manager.config, nvr_manager.storage_path)
+        result = bm.run_backup()
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Error triggering backup: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/api/backup/status", methods=["GET"])
+@login_required
+def get_backup_status_route():
+    if hasattr(nvr_manager, "backup_manager") and nvr_manager.backup_manager:
+        return jsonify(nvr_manager.backup_manager.last_backup_status)
+    return jsonify({"status": "Idle", "last_run": None, "message": "No active backup job"})
 
 @app.route("/api/recordings/<cam_id>")
 @login_required
