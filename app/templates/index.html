@@ -571,6 +571,66 @@
         }
         .video-player-container video { width: 100%; height: 100%; object-fit: contain; }
 
+        /* Playback Quick Control Bar */
+        .playback-ctrl-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .playback-ctrl-group {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .playback-ctrl-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-radius: 6px;
+            padding: 0.35rem 0.6rem;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            font-weight: 500;
+        }
+        .playback-ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        .playback-ctrl-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+        }
+        .playback-clock-display {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            background: rgba(0, 0, 0, 0.35);
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
         .log-box {
             background: #050811;
             color: #38bdf8;
@@ -1424,6 +1484,45 @@
                             </div>
                         </div>
                         
+                        <!-- Playback Quick Control Bar -->
+                        <div class="playback-ctrl-bar" id="playbackCtrlBar" style="display: none;">
+                            <div class="playback-ctrl-group">
+                                <button class="playback-ctrl-btn" onclick="togglePlaybackPlayPause()" id="btnPlayPause" title="Play / Pause (Spasi)">
+                                    <span id="playPauseIcon">▶</span>
+                                </button>
+                                <button class="playback-ctrl-btn" onclick="skipPlaybackSeconds(-5)" title="Mundur 5 detik (←)">
+                                    ⏮ -5s
+                                </button>
+                                <button class="playback-ctrl-btn" onclick="skipPlaybackSeconds(5)" title="Maju 5 detik (→)">
+                                    +5s ⏭
+                                </button>
+                                <span class="playback-clock-display" id="playbackRealtimeClock" title="Waktu Nyata Rekaman">
+                                    🕒 00:00:00
+                                </span>
+                            </div>
+
+                            <div class="playback-ctrl-group">
+                                <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 2px;">Speed:</span>
+                                <button class="playback-ctrl-btn" onclick="setPlaybackSpeed(0.5, this)">0.5x</button>
+                                <button class="playback-ctrl-btn active" onclick="setPlaybackSpeed(1, this)">1x</button>
+                                <button class="playback-ctrl-btn" onclick="setPlaybackSpeed(2, this)">2x</button>
+                                <button class="playback-ctrl-btn" onclick="setPlaybackSpeed(4, this)">4x</button>
+                                <button class="playback-ctrl-btn" onclick="setPlaybackSpeed(8, this)">8x</button>
+                            </div>
+
+                            <div class="playback-ctrl-group">
+                                <button class="playback-ctrl-btn" onclick="takePlaybackSnapshot()" title="Ambil Foto Tangkapan Layar (Snapshot)">
+                                    📸 Snapshot
+                                </button>
+                                <button class="playback-ctrl-btn" onclick="downloadCurrentSegment()" title="Unduh File MP4 Segmen Ini">
+                                    ⬇️ Segmen
+                                </button>
+                                <button class="playback-ctrl-btn" onclick="togglePlaybackFullscreen()" title="Layar Penuh (F)">
+                                    ⛶
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Timeline Scrubber Container -->
                         <div class="timeline-wrapper" id="timelineWrapper" style="display: none;">
                             <div class="timeline-container" id="timelineContainer" onmousemove="updateTimelineTooltip(event)" onmouseleave="hideTimelineTooltip()" onclick="seekTimeline(event)">
@@ -1873,6 +1972,8 @@
             activePlayingFileIndex = -1;
             activePlayingDate = "";
             document.getElementById('timelineWrapper').style.display = 'none';
+            const ctrlBar = document.getElementById('playbackCtrlBar');
+            if (ctrlBar) ctrlBar.style.display = 'none';
         }
 
         function switchViewerTab(tab) {
@@ -1889,6 +1990,8 @@
                 document.getElementById('viewLive').classList.add('active');
                 startLiveStream(currentViewCamId);
                 if (vid) vid.pause();
+                const ctrlBar = document.getElementById('playbackCtrlBar');
+                if (ctrlBar) ctrlBar.style.display = 'none';
                 
                 const cam = currentConfig.cameras.find(c => c.id === currentViewCamId);
                 const ptz = document.getElementById('ptzControls');
@@ -1910,6 +2013,9 @@
             // Hide timeline wrapper and reset player
             document.getElementById('timelineWrapper').style.display = 'none';
             document.getElementById('eventsListContainer').style.display = 'none';
+            const ctrlBar = document.getElementById('playbackCtrlBar');
+            if (ctrlBar) ctrlBar.style.display = 'none';
+
             const vid = document.getElementById('playbackVideo');
             vid.pause();
             vid.src = "";
@@ -1928,7 +2034,8 @@
                 activeRecordingsData.forEach(dateGroup => {
                     const item = document.createElement('div');
                     item.className = 'time-item';
-                    item.innerText = dateGroup.date;
+                    const fileCount = (dateGroup.files && dateGroup.files.length) ? dateGroup.files.length : 0;
+                    item.innerHTML = `<span>📅 ${dateGroup.date}</span> <span style="font-size:0.75rem;opacity:0.75;background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:10px;">${fileCount} segmen</span>`;
                     item.onclick = () => selectPlaybackDate(dateGroup.date, item);
                     listEl.appendChild(item);
                 });
@@ -1961,6 +2068,8 @@
             selectedDateFiles.sort((a, b) => a.startSeconds - b.startSeconds);
             renderTimelineTracks();
             document.getElementById('timelineWrapper').style.display = 'block';
+            const ctrlBar = document.getElementById('playbackCtrlBar');
+            if (ctrlBar) ctrlBar.style.display = 'flex';
             
             if (selectedDateFiles.length > 0) {
                 playFileAtIndex(0, 0);
@@ -2134,6 +2243,9 @@
             
             vid.onloadedmetadata = () => {
                 vid.currentTime = offsetSeconds;
+                if (typeof currentPlaybackSpeed !== 'undefined') {
+                    vid.playbackRate = currentPlaybackSpeed;
+                }
                 vid.play().catch(e => console.error("Play prevented:", e));
                 vid.onloadedmetadata = null;
             };
@@ -2160,6 +2272,9 @@
                         vid.onloadedmetadata = () => {
                             document.getElementById('videoErrorOverlay').style.display = 'none';
                             vid.currentTime = offsetSeconds;
+                            if (typeof currentPlaybackSpeed !== 'undefined') {
+                                vid.playbackRate = currentPlaybackSpeed;
+                            }
                             vid.play().catch(e => console.error("Play prevented:", e));
                             vid.onloadedmetadata = null;
                         };
@@ -2859,7 +2974,92 @@
             });
         }
 
-        // Bind playback video listeners for scrubber sync and continuous playback
+        // Playback Quick Control State & Functions
+        let currentPlaybackSpeed = 1;
+
+        function setPlaybackSpeed(speed, btn) {
+            currentPlaybackSpeed = speed;
+            const vid = document.getElementById('playbackVideo');
+            if (vid) vid.playbackRate = speed;
+            document.querySelectorAll('#playbackCtrlBar .playback-ctrl-btn').forEach(b => {
+                if (['0.5x', '1x', '2x', '4x', '8x'].includes(b.innerText.trim())) {
+                    b.classList.remove('active');
+                    if (b.innerText.trim() === `${speed}x`) {
+                        b.classList.add('active');
+                    }
+                }
+            });
+            if (btn) btn.classList.add('active');
+        }
+
+        function togglePlaybackPlayPause() {
+            const vid = document.getElementById('playbackVideo');
+            if (!vid || !vid.src) return;
+            if (vid.paused) {
+                vid.play().catch(e => console.error("Play error:", e));
+            } else {
+                vid.pause();
+            }
+        }
+
+        function skipPlaybackSeconds(delta) {
+            const vid = document.getElementById('playbackVideo');
+            if (!vid || !vid.src || activePlayingFileIndex === -1 || selectedDateFiles.length === 0) return;
+            
+            const currentFile = selectedDateFiles[activePlayingFileIndex];
+            const currentAbsoluteSecs = currentFile.startSeconds + vid.currentTime;
+            const targetAbsoluteSecs = Math.max(0, Math.min(86400, currentAbsoluteSecs + delta));
+            
+            jumpToTimelineTime(targetAbsoluteSecs);
+        }
+
+        function takePlaybackSnapshot() {
+            const vid = document.getElementById('playbackVideo');
+            if (!vid || !vid.src || vid.videoWidth === 0) {
+                alert("Video belum siap untuk diambil tangkapan gambarnya.");
+                return;
+            }
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = vid.videoWidth;
+                canvas.height = vid.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+                
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                const a = document.createElement('a');
+                const rawClock = document.getElementById('playbackRealtimeClock') ? document.getElementById('playbackRealtimeClock').innerText.replace(/[^\d:]/g, '').replace(/:/g, '-') : 'snapshot';
+                a.download = `snapshot_${currentViewCamId || 'cam'}_${activePlayingDate || 'date'}_${rawClock}.jpg`;
+                a.href = dataUrl;
+                a.click();
+            } catch (err) {
+                alert("Gagal mengambil snapshot: " + err.message);
+            }
+        }
+
+        function downloadCurrentSegment() {
+            if (activePlayingFileIndex === -1 || !selectedDateFiles[activePlayingFileIndex]) {
+                alert("Pilih segmen rekaman terlebih dahulu.");
+                return;
+            }
+            const file = selectedDateFiles[activePlayingFileIndex];
+            const a = document.createElement('a');
+            a.href = `${file.path}?download=1`;
+            a.download = file.filename;
+            a.click();
+        }
+
+        function togglePlaybackFullscreen() {
+            const container = document.querySelector('.video-player-container');
+            if (!container) return;
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => console.error("Fullscreen error:", err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Bind playback video listeners for scrubber sync, clock update, and continuous playback
         const playbackVideo = document.getElementById('playbackVideo');
         if (playbackVideo) {
             playbackVideo.addEventListener('timeupdate', (event) => {
@@ -2876,6 +3076,24 @@
                 if (handle) {
                     handle.style.left = `${Math.min(100, Math.max(0, percent))}%`;
                 }
+
+                const clockEl = document.getElementById('playbackRealtimeClock');
+                if (clockEl) {
+                    const hrs = Math.floor(absoluteSeconds / 3600);
+                    const mins = Math.floor((absoluteSeconds % 3600) / 60);
+                    const secs = Math.floor(absoluteSeconds % 60);
+                    clockEl.innerText = `🕒 ${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                }
+            });
+
+            playbackVideo.addEventListener('play', () => {
+                const icon = document.getElementById('playPauseIcon');
+                if (icon) icon.innerText = '⏸';
+            });
+
+            playbackVideo.addEventListener('pause', () => {
+                const icon = document.getElementById('playPauseIcon');
+                if (icon) icon.innerText = '▶';
             });
 
             playbackVideo.addEventListener('ended', () => {
@@ -2884,6 +3102,42 @@
                 }
             });
         }
+
+        // Keyboard hotkeys for playback (Space: Play/Pause, Left/Right: -5s/+5s, [/]: Speed, F: Fullscreen)
+        document.addEventListener('keydown', (e) => {
+            const viewerModal = document.getElementById('viewerModal');
+            if (!viewerModal || !viewerModal.classList.contains('active')) return;
+            
+            const viewPlayback = document.getElementById('viewPlayback');
+            if (!viewPlayback || !viewPlayback.classList.contains('active')) return;
+            
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+            
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlaybackPlayPause();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                skipPlaybackSeconds(-5);
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                skipPlaybackSeconds(5);
+            } else if (e.key === '[' || e.key === ']') {
+                e.preventDefault();
+                const speeds = [0.5, 1, 2, 4, 8];
+                let currIdx = speeds.indexOf(currentPlaybackSpeed);
+                if (currIdx === -1) currIdx = 1;
+                if (e.key === '[' && currIdx > 0) {
+                    setPlaybackSpeed(speeds[currIdx - 1]);
+                } else if (e.key === ']' && currIdx < speeds.length - 1) {
+                    setPlaybackSpeed(speeds[currIdx + 1]);
+                }
+            } else if (e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                togglePlaybackFullscreen();
+            }
+        });
 
         async function fetchStorageAnalytics() {
             const canvas = document.getElementById('storageAnalyticsChart');
