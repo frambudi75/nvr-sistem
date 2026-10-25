@@ -151,11 +151,13 @@ def get_status():
     cameras_config = {cam["id"]: cam for cam in nvr_manager.config.get("cameras", [])}
     
     for cam_id, cam in cameras_config.items():
+        fail_count = getattr(nvr_manager, "camera_fail_count", {}).get(cam_id, 0)
         cam_status = {
             "id": cam_id,
             "name": cam.get("name"),
             "enabled": cam.get("enabled", True),
-            "recording": False
+            "recording": False,
+            "fail_count": fail_count
         }
         if cam_id in nvr_manager.recorders:
             recorder = nvr_manager.recorders[cam_id]
@@ -411,6 +413,50 @@ def stream_camera(cam_id):
         return "RTSP URL missing", 404
         
     return Response(generate_mjpeg_stream(rtsp_url), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+snapshot_cache = {}
+
+@app.route("/api/snapshot/<cam_id>")
+@login_required
+def get_camera_snapshot(cam_id):
+    cameras_config = {cam["id"]: cam for cam in nvr_manager.config.get("cameras", [])}
+    if cam_id not in cameras_config:
+        return "Camera not found", 404
+        
+    cam = cameras_config[cam_id]
+    rtsp_url = cam.get("substream_url") or cam.get("rtsp_url")
+    if not rtsp_url:
+        return "RTSP URL missing", 404
+        
+    now = time.time()
+    cached = snapshot_cache.get(cam_id)
+    if cached and (now - cached[0] < 12):
+        return Response(cached[1], mimetype="image/jpeg", headers={"Cache-Control": "public, max-age=10"})
+
+    try:
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-rtsp_transport", "tcp",
+            "-timeout", "3000000",
+            "-i", rtsp_url,
+            "-vframes", "1",
+            "-q:v", "4",
+            "-f", "image2",
+            "-"
+        ]
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=4)
+        if proc.returncode == 0 and len(proc.stdout) > 200:
+            snapshot_cache[cam_id] = (now, proc.stdout)
+            return Response(proc.stdout, mimetype="image/jpeg", headers={"Cache-Control": "public, max-age=10"})
+        elif cached:
+            return Response(cached[1], mimetype="image/jpeg")
+        else:
+            return "Snapshot capture failed", 500
+    except Exception as e:
+        if cached:
+            return Response(cached[1], mimetype="image/jpeg")
+        return f"Snapshot error: {e}", 500
 
 # Stream session engine
 import tempfile

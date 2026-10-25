@@ -32,9 +32,16 @@ class Cleaner:
                     # Get file modification time
                     mtime = os.path.getmtime(file_path)
                     age_seconds = current_time - mtime
+                    size = os.path.getsize(file_path)
+
+                    # Purge 0-byte corrupt or interrupted files older than 5 minutes
+                    if size == 0 and age_seconds > 300:
+                        os.remove(file_path)
+                        deleted_count += 1
+                        logger.info(f"Purged 0-byte corrupt recording: {file_path}")
+                        continue
 
                     if age_seconds > self.retention_seconds:
-                        size = os.path.getsize(file_path)
                         os.remove(file_path)
                         deleted_count += 1
                         freed_space += size

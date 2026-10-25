@@ -314,6 +314,12 @@
             border: 1px solid rgba(16, 185, 129, 0.3);
         }
 
+        .cam-badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
         .cam-badge-stopped {
             background: var(--danger-bg);
             color: #fb7185;
@@ -324,6 +330,59 @@
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-muted);
             border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .cam-thumb-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #030712;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            margin: 0.75rem 0 0.5rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cam-card-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.25s ease;
+        }
+        .cam-thumb-container:hover .cam-card-thumb {
+            transform: scale(1.03);
+        }
+        .cam-thumb-fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #080d1a;
+        }
+        .cam-thumb-overlay {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: #f8fafc;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .cam-thumb-container:hover .cam-thumb-overlay {
+            opacity: 1;
         }
 
         .status-indicator {
@@ -1077,10 +1136,17 @@
         <!-- PAGE 1: Dashboard -->
         <div id="page-dashboard" class="page active">
             <div style="margin-bottom: 1.25rem; display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                <!-- Location Group Filter Bar -->
-                <div id="groupFilterBar" style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; flex: 1;">
-                    <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-right: 0.25rem;">Filter Area:</span>
-                    <button class="secondary active" style="padding: 0.3rem 0.85rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('all', event)">All</button>
+                <!-- Location Group & Status Filter Bar -->
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; flex: 1;">
+                    <div id="groupFilterBar" style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
+                        <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-right: 0.25rem;">Filter Area:</span>
+                        <button class="secondary active" style="padding: 0.3rem 0.85rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('all', event)">All</button>
+                    </div>
+                    <div style="display: flex; gap: 0.25rem; align-items: center; background: rgba(0,0,0,0.3); padding: 3px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);">
+                        <button id="statusFilter-all" class="secondary active" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px;" onclick="filterCameraStatus('all')">Semua</button>
+                        <button id="statusFilter-rec" class="secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px; color: #34d399;" onclick="filterCameraStatus('rec')">● REC</button>
+                        <button id="statusFilter-offline" class="secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px; color: #fbbf24;" onclick="filterCameraStatus('offline')">⚠️ Offline</button>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 0.6rem;">
                     <button class="secondary" onclick="openGridView()">
@@ -1447,7 +1513,12 @@
                         </select>
                     </div>
                 </div>
-                <button class="secondary" onclick="closeGridView()">Exit Grid</button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="secondary" onclick="toggleMatrixFullscreen()" id="btnTvWall" title="Layar Penuh TV Wall (Esc)">
+                        📺 TV Wall (Fullscreen)
+                    </button>
+                    <button class="secondary" onclick="closeGridView()">Exit Grid</button>
+                </div>
             </div>
             <div id="gridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem; flex: 1; align-content: start;">
             </div>
@@ -1889,12 +1960,19 @@
             
             const allCams = currentConfig.cameras || [];
             const filteredCams = allCams.filter(cam => {
-                if (selectedCameraGroup === 'all') return true;
-                return (cam.group || '').trim() === selectedCameraGroup;
+                if (selectedCameraGroup !== 'all' && (cam.group || '').trim() !== selectedCameraGroup) return false;
+                const status = currentStatus.find(s => s.id === cam.id) || {};
+                if (selectedStatusFilter === 'rec') {
+                    return cam.enabled && status.recording;
+                }
+                if (selectedStatusFilter === 'offline') {
+                    return !cam.enabled || !status.recording;
+                }
+                return true;
             });
 
             if (filteredCams.length === 0) {
-                grid.innerHTML = '<p style="color: var(--text-muted)">Tidak ada kamera di area ini.</p>';
+                grid.innerHTML = '<p style="color: var(--text-muted)">Tidak ada kamera dengan filter ini.</p>';
                 updateCleanupCameraDropdown();
                 return;
             }
@@ -1908,6 +1986,9 @@
                     if (status.recording) {
                         badgeClass = 'cam-badge-recording';
                         badgeLabel = '● REC';
+                    } else if (status.fail_count && status.fail_count > 0) {
+                        badgeClass = 'cam-badge-warning';
+                        badgeLabel = `⚠️ NO SIGNAL (${status.fail_count})`;
                     } else {
                         badgeClass = 'cam-badge-stopped';
                         badgeLabel = '● STOPPED';
@@ -1919,6 +2000,24 @@
                 let quotaBadge = cam.max_quota_gb ? `<span class="cam-meta-tag">💾 ${cam.max_quota_gb} GB</span>` : '';
                 let aiBadge = cam.ai_detection !== false ? `<span class="cam-meta-tag" style="color:#a78bfa;">🤖 AI Active</span>` : '';
                 let subBadge = cam.substream_url ? `<span class="cam-meta-tag" style="color:#06b6d4; border-color: rgba(6,182,212,0.3);">⚡ Sub-Stream</span>` : '';
+
+                let thumbHtml = `
+                    <div class="cam-thumb-container" onclick="openViewer('${cam.id}', '${cam.name}')" title="Klik untuk membuka Live Stream">
+                        <img id="thumb_${cam.id}" 
+                             src="/api/snapshot/${cam.id}?t=${Date.now()}" 
+                             class="cam-card-thumb" 
+                             loading="lazy"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                        >
+                        <div class="cam-thumb-fallback" style="${cam.enabled ? 'display:none;' : 'display:flex;'}">
+                            <svg style="width: 24px; height: 24px; fill: #64748b; margin-bottom: 4px;" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                            <span style="font-size: 0.78rem; color: #94a3b8;">${cam.enabled ? 'Memuat snapshot...' : 'Kamera Nonaktif'}</span>
+                        </div>
+                        <div class="cam-thumb-overlay">
+                            <span>▶ Live Stream</span>
+                        </div>
+                    </div>
+                `;
 
                 const card = document.createElement('div');
                 card.className = 'camera-card';
@@ -1936,6 +2035,7 @@
                                 ` : ''}
                             </div>
                         </div>
+                        ${thumbHtml}
                         <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem;">
                             <span class="cam-meta-tag">🏷️ ${brandTag}</span>
                             ${locationBadge}
@@ -3205,26 +3305,49 @@
             });
         }
 
-        // Keyboard hotkeys for playback (Space: Play/Pause, Left/Right: -5s/+5s, [/]: Speed, F: Fullscreen)
+        // Keyboard navigation and playback shortcuts
         document.addEventListener('keydown', (e) => {
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+            
+            // Global Escape key handling
+            if (e.key === 'Escape') {
+                const gridModal = document.getElementById('gridViewModal');
+                if (gridModal && gridModal.classList.contains('active')) {
+                    if (document.fullscreenElement) {
+                        if (document.exitFullscreen) document.exitFullscreen();
+                    }
+                    closeGridView();
+                    return;
+                }
+                const viewerModal = document.getElementById('viewerModal');
+                if (viewerModal && viewerModal.classList.contains('active')) {
+                    closeViewer();
+                    return;
+                }
+                closeModal();
+                return;
+            }
+
             const viewerModal = document.getElementById('viewerModal');
             if (!viewerModal || !viewerModal.classList.contains('active')) return;
             
             const viewPlayback = document.getElementById('viewPlayback');
             if (!viewPlayback || !viewPlayback.classList.contains('active')) return;
             
-            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
-            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-            
             if (e.code === 'Space') {
                 e.preventDefault();
                 togglePlaybackPlayPause();
-            } else if (e.code === 'ArrowLeft') {
+            } else if (e.code === 'ArrowLeft' || e.key.toLowerCase() === 'j') {
                 e.preventDefault();
-                skipPlaybackSeconds(-5);
-            } else if (e.code === 'ArrowRight') {
+                skipPlaybackSeconds(-10);
+            } else if (e.code === 'ArrowRight' || e.key.toLowerCase() === 'l') {
                 e.preventDefault();
-                skipPlaybackSeconds(5);
+                skipPlaybackSeconds(10);
+            } else if (e.key.toLowerCase() === 'm') {
+                e.preventDefault();
+                const vid = document.getElementById('playbackVideo');
+                if (vid) vid.muted = !vid.muted;
             } else if (e.key === '[' || e.key === ']') {
                 e.preventDefault();
                 const speeds = [0.5, 1, 2, 4, 8];
@@ -3484,8 +3607,21 @@
             }
         }
 
-        /* Camera group filtering */
+        /* Camera group and status filtering */
         let selectedCameraGroup = 'all';
+        let selectedStatusFilter = 'all';
+
+        function filterCameraStatus(status) {
+            selectedStatusFilter = status;
+            ['all', 'rec', 'offline'].forEach(s => {
+                const btn = document.getElementById(`statusFilter-${s}`);
+                if (btn) {
+                    if (s === status) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+            renderDashboard();
+        }
 
         function filterCameraGroup(group, event) {
             selectedCameraGroup = group;
@@ -3503,12 +3639,42 @@
                     if (c.group && c.group.trim()) groups.add(c.group.trim());
                 });
             }
-            bar.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 0.25rem;">Area:</span>';
+            bar.innerHTML = '<span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-right: 0.25rem;">Filter Area:</span>';
             groups.forEach(g => {
                 const isActive = g === selectedCameraGroup ? 'active' : '';
                 const label = g === 'all' ? 'All' : g;
                 bar.innerHTML += `<button class="secondary ${isActive}" style="padding: 0.25rem 0.75rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('${g}', event)">${label}</button>`;
             });
+        }
+
+        function toggleMatrixFullscreen() {
+            const modal = document.getElementById('gridViewModal');
+            const btn = document.getElementById('btnTvWall');
+            if (!document.fullscreenElement) {
+                if (modal.requestFullscreen) modal.requestFullscreen();
+                else if (modal.webkitRequestFullscreen) modal.webkitRequestFullscreen();
+                if (btn) btn.innerText = '✕ Exit TV Wall';
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                if (btn) btn.innerText = '📺 TV Wall (Fullscreen)';
+            }
+        }
+
+        let thumbRefreshInterval = null;
+        function startThumbAutoRefresh() {
+            if (thumbRefreshInterval) clearInterval(thumbRefreshInterval);
+            thumbRefreshInterval = setInterval(() => {
+                const dashPage = document.getElementById('page-dashboard');
+                if (dashPage && dashPage.classList.contains('active')) {
+                    document.querySelectorAll('.cam-card-thumb').forEach(img => {
+                        const src = img.getAttribute('src');
+                        if (src && !img.closest('.modal')) {
+                            const baseUrl = src.split('?')[0];
+                            img.src = `${baseUrl}?t=${Date.now()}`;
+                        }
+                    });
+                }
+            }, 20000);
         }
 
         /* Stream player handlers */
@@ -3853,6 +4019,7 @@
 
         initChart();
         fetchData();
+        startThumbAutoRefresh();
         setInterval(fetchData, 5000);
         setInterval(detectMotion, 150);
     </script>
