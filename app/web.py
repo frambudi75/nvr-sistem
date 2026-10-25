@@ -268,7 +268,7 @@ def generate_mjpeg_stream(rtsp_url):
     command = [
         "ffmpeg",
         "-rtsp_transport", "tcp",
-        "-stimeout", "5000000",
+        "-timeout", "5000000",
         "-i", rtsp_url,
         "-vf", "scale=640:-2", 
         "-r", "10",

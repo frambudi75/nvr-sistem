@@ -71,7 +71,7 @@ class Recorder:
         command = [
             "ffmpeg",
             "-rtsp_transport", "tcp",
-            "-stimeout", "5000000",
+            "-timeout", "5000000",
             "-i", self.rtsp_url,
             "-c", "copy",
             "-f", "segment",
