@@ -428,10 +428,19 @@ def get_camera_snapshot(cam_id):
     if not rtsp_url:
         return "RTSP URL missing", 404
         
+    is_download = request.args.get("download") == "1"
+    download_filename = f"snapshot_{cam_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+
+    def make_snapshot_response(data):
+        headers = {"Cache-Control": "public, max-age=10"}
+        if is_download:
+            headers["Content-Disposition"] = f'attachment; filename="{download_filename}"'
+        return Response(data, mimetype="image/jpeg", headers=headers)
+
     now = time.time()
     cached = snapshot_cache.get(cam_id)
     if cached and (now - cached[0] < 12):
-        return Response(cached[1], mimetype="image/jpeg", headers={"Cache-Control": "public, max-age=10"})
+        return make_snapshot_response(cached[1])
 
     try:
         cmd = [
@@ -448,14 +457,14 @@ def get_camera_snapshot(cam_id):
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=4)
         if proc.returncode == 0 and len(proc.stdout) > 200:
             snapshot_cache[cam_id] = (now, proc.stdout)
-            return Response(proc.stdout, mimetype="image/jpeg", headers={"Cache-Control": "public, max-age=10"})
+            return make_snapshot_response(proc.stdout)
         elif cached:
-            return Response(cached[1], mimetype="image/jpeg")
+            return make_snapshot_response(cached[1])
         else:
             return "Snapshot capture failed", 500
     except Exception as e:
         if cached:
-            return Response(cached[1], mimetype="image/jpeg")
+            return make_snapshot_response(cached[1])
         return f"Snapshot error: {e}", 500
 
 # Stream session engine

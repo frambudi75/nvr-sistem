@@ -385,6 +385,10 @@
             opacity: 1;
         }
 
+        .night-boost {
+            filter: brightness(1.3) contrast(1.4) saturate(0.85) drop-shadow(0 0 1px rgba(255,255,255,0.2)) !important;
+        }
+
         .status-indicator {
             display: inline-block;
             width: 7px;
@@ -1137,15 +1141,18 @@
         <div id="page-dashboard" class="page active">
             <div style="margin-bottom: 1.25rem; display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap;">
                 <!-- Location Group & Status Filter Bar -->
-                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; flex: 1;">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; flex: 1;">
                     <div id="groupFilterBar" style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;">
-                        <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-right: 0.25rem;">Filter Area:</span>
+                        <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-right: 0.25rem;">Area:</span>
                         <button class="secondary active" style="padding: 0.3rem 0.85rem; font-size: 0.8rem; border-radius: 20px;" onclick="filterCameraGroup('all', event)">All</button>
                     </div>
-                    <div style="display: flex; gap: 0.25rem; align-items: center; background: rgba(0,0,0,0.3); padding: 3px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);">
-                        <button id="statusFilter-all" class="secondary active" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px;" onclick="filterCameraStatus('all')">Semua</button>
-                        <button id="statusFilter-rec" class="secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px; color: #34d399;" onclick="filterCameraStatus('rec')">● REC</button>
-                        <button id="statusFilter-offline" class="secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px; color: #fbbf24;" onclick="filterCameraStatus('offline')">⚠️ Offline</button>
+                    <div style="display: flex; gap: 0.35rem; align-items: center;">
+                        <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; margin-left: 0.5rem; margin-right: 0.25rem;">Status:</span>
+                        <div style="display: flex; gap: 0.25rem; align-items: center; background: rgba(0,0,0,0.3); padding: 3px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08);">
+                            <button id="statusFilter-all" class="secondary active" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px;" onclick="filterCameraStatus('all')">Semua</button>
+                            <button id="statusFilter-rec" class="secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px; color: #34d399;" onclick="filterCameraStatus('rec')">● REC</button>
+                            <button id="statusFilter-offline" class="secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem; border-radius: 16px; color: #fbbf24;" onclick="filterCameraStatus('offline')">⚠️ Offline</button>
+                        </div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.6rem;">
@@ -1552,11 +1559,19 @@
                     <video id="liveHlsVideo" controls autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: contain; background: black;"></video>
                     <canvas id="motionCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
                     
-                    <!-- Snapshot Button -->
-                    <button onclick="takeSnapshot()" style="position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.7); padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); z-index: 10; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Ambil Foto Cepat">
-                        <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
-                        Snapshot
-                    </button>
+                    <!-- Live Controls Overlay (Night Boost, PiP, Snapshot) -->
+                    <div style="position: absolute; bottom: 12px; right: 12px; display: flex; gap: 0.4rem; z-index: 10;">
+                        <button class="playback-ctrl-btn btn-night-boost" onclick="toggleNightBoost()" style="background: rgba(0,0,0,0.7); padding: 0.4rem 0.75rem;" title="Peningkat Kontras Malam (Night Boost)">
+                            🌙 Night Boost
+                        </button>
+                        <button class="playback-ctrl-btn" onclick="toggleLiveImgPiP()" style="background: rgba(0,0,0,0.7); padding: 0.4rem 0.75rem;" title="Pop-out Window (Picture-in-Picture)">
+                            📌 PiP
+                        </button>
+                        <button onclick="takeSnapshot()" style="background: rgba(0,0,0,0.7); padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;" title="Ambil Foto Cepat">
+                            <svg style="width: 14px; height: 14px; fill: currentColor;" viewBox="0 0 24 24"><path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm10 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/></svg>
+                            Snapshot
+                        </button>
+                    </div>
                     <!-- PTZ Controls (Overlay) -->
                     <div id="ptzControls" style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 0.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); z-index: 10; display: none; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem;">
                         <div></div>
@@ -1574,6 +1589,15 @@
             <div class="viewer-container" id="viewPlayback">
                 <div class="playback-grid">
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <!-- Quick Time Jump -->
+                        <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500;">⏱️ Lompat ke Jam:</span>
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <input type="time" id="jumpTimeInput" step="60" style="padding: 0.35rem 0.5rem; font-size: 0.8rem; background: rgba(0,0,0,0.5); border: 1px solid var(--border); color: white; border-radius: 6px; flex: 1;">
+                                <button class="secondary" onclick="jumpToTime()" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">Lompat</button>
+                            </div>
+                        </div>
+
                         <div class="recording-list" id="recordingList">Loading dates...</div>
                         
                         <!-- Detected Events Sidebar Box -->
@@ -1625,6 +1649,12 @@
                             </div>
 
                             <div class="playback-ctrl-group">
+                                <button class="playback-ctrl-btn btn-night-boost" onclick="toggleNightBoost()" title="Peningkat Kontras Malam (Night Boost)">
+                                    🌙 Boost
+                                </button>
+                                <button class="playback-ctrl-btn" onclick="togglePiP('playbackVideo')" title="Pop-out Window (Picture-in-Picture)">
+                                    📌 PiP
+                                </button>
                                 <button class="playback-ctrl-btn" onclick="takePlaybackSnapshot()" title="Ambil Foto Tangkapan Layar (Snapshot)">
                                     📸 Snapshot
                                 </button>
@@ -2052,6 +2082,9 @@
                             <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                             Live & Playback
                         </button>
+                        <a href="/api/snapshot/${cam.id}?download=1" download class="secondary" style="padding: 0.45rem 0.65rem; display: inline-flex; align-items: center; justify-content: center; text-decoration: none;" title="Unduh Snapshot Foto (JPG)">
+                            <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/></svg>
+                        </a>
                         ${userRole === 'admin' ? `
                         <button class="secondary" onclick="editCamera('${cam.id}')" title="Edit Settings">
                             <svg style="width: 13px; height: 13px; fill: currentColor;" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
@@ -3606,6 +3639,161 @@
                 console.error("PTZ failed", e);
             }
         }
+
+        /* Night Boost, PiP, and Time Jump Controls */
+        let isNightBoostActive = false;
+        function toggleNightBoost() {
+            isNightBoostActive = !isNightBoostActive;
+            const targets = [
+                document.getElementById('liveStreamImg'),
+                document.getElementById('liveHlsVideo'),
+                document.getElementById('playbackVideo')
+            ];
+            targets.forEach(el => {
+                if (el) {
+                    if (isNightBoostActive) el.classList.add('night-boost');
+                    else el.classList.remove('night-boost');
+                }
+            });
+            const btns = document.querySelectorAll('.btn-night-boost');
+            btns.forEach(btn => {
+                if (isNightBoostActive) {
+                    btn.classList.add('active');
+                    btn.style.color = '#fbbf24';
+                    btn.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                } else {
+                    btn.classList.remove('active');
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }
+            });
+        }
+
+        async function togglePiP(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else if (el.requestPictureInPicture) {
+                    await el.requestPictureInPicture();
+                }
+            } catch (err) {
+                console.warn("PiP error:", err);
+            }
+        }
+
+        let pipVideo = null;
+        let pipAnimId = null;
+
+        async function toggleLiveImgPiP() {
+            const img = document.getElementById('liveStreamImg');
+            const hlsVideo = document.getElementById('liveHlsVideo');
+            if (hlsVideo && hlsVideo.style.display !== 'none' && !hlsVideo.paused) {
+                return togglePiP('liveHlsVideo');
+            }
+            if (!img || !img.src) return;
+
+            if (document.pictureInPictureElement) {
+                if (document.exitPictureInPicture) await document.exitPictureInPicture();
+                if (pipAnimId) cancelAnimationFrame(pipAnimId);
+                return;
+            }
+
+            if (!pipVideo) {
+                pipVideo = document.createElement('video');
+                pipVideo.muted = true;
+                pipVideo.autoplay = true;
+                pipVideo.playsInline = true;
+                pipVideo.style.display = 'none';
+                document.body.appendChild(pipVideo);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || 640;
+            canvas.height = img.naturalHeight || 360;
+            const ctx = canvas.getContext('2d');
+
+            try {
+                const stream = canvas.captureStream(15);
+                pipVideo.srcObject = stream;
+                await pipVideo.play();
+
+                function draw() {
+                    if (document.pictureInPictureElement === pipVideo) {
+                        try {
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        } catch(e){}
+                        pipAnimId = requestAnimationFrame(draw);
+                    }
+                }
+                pipAnimId = requestAnimationFrame(draw);
+                await pipVideo.requestPictureInPicture();
+            } catch (e) {
+                console.warn("Live PiP unsupported or failed:", e);
+            }
+        }
+
+        function jumpToTime() {
+            const input = document.getElementById('jumpTimeInput');
+            if (!input || !input.value) return;
+            const parts = input.value.split(':');
+            if (parts.length < 2) return;
+            const hours = parseInt(parts[0], 10);
+            const mins = parseInt(parts[1], 10);
+            const targetSeconds = (hours * 3600) + (mins * 60);
+
+            if (!selectedDateFiles || selectedDateFiles.length === 0) {
+                alert("Pilih tanggal rekaman terlebih dahulu dari daftar di bawah.");
+                return;
+            }
+
+            let targetFileIndex = selectedDateFiles.findIndex(f => targetSeconds >= f.startSeconds && targetSeconds <= f.endSeconds);
+            if (targetFileIndex === -1) {
+                targetFileIndex = selectedDateFiles.findIndex(f => f.startSeconds > targetSeconds);
+                if (targetFileIndex === -1) targetFileIndex = selectedDateFiles.length - 1;
+                playFileAtIndex(targetFileIndex, 0);
+            } else {
+                const offsetSeconds = targetSeconds - selectedDateFiles[targetFileIndex].startSeconds;
+                playFileAtIndex(targetFileIndex, offsetSeconds);
+            }
+        }
+
+        /* Smart Bandwidth Saver: pause background streams when tab is hidden */
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                const liveImg = document.getElementById('liveStreamImg');
+                if (liveImg && liveImg.src && !liveImg.src.startsWith('data:')) {
+                    liveImg.dataset.savedSrc = liveImg.src;
+                    liveImg.src = '';
+                }
+                const grid = document.getElementById('gridContainer');
+                if (grid) {
+                    grid.querySelectorAll('img').forEach(img => {
+                        if (img.src) {
+                            img.dataset.savedSrc = img.src;
+                            img.src = '';
+                        }
+                    });
+                }
+            } else {
+                const liveImg = document.getElementById('liveStreamImg');
+                if (liveImg && liveImg.dataset.savedSrc) {
+                    liveImg.src = liveImg.dataset.savedSrc.split('?')[0] + '?t=' + Date.now();
+                    delete liveImg.dataset.savedSrc;
+                }
+                const grid = document.getElementById('gridContainer');
+                if (grid) {
+                    grid.querySelectorAll('img').forEach(img => {
+                        if (img.dataset.savedSrc) {
+                            img.src = img.dataset.savedSrc.split('?')[0] + '?t=' + Date.now();
+                            delete img.dataset.savedSrc;
+                        }
+                    });
+                }
+                if (typeof fetchData === 'function') fetchData();
+            }
+        });
 
         /* Camera group and status filtering */
         let selectedCameraGroup = 'all';
