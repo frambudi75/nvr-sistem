@@ -10,5 +10,8 @@ services:
       - ./app:/app
     environment:
       - TZ=Asia/Jakarta # Adjust timezone as needed
-    # ports:
-    #   - "5000:5000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -468,6 +468,55 @@ def get_camera_snapshot(cam_id):
             return make_snapshot_response(cached[1])
         return f"Snapshot error: {e}", 500
 
+def generate_audio_stream(rtsp_url):
+    cmd = [
+        "ffmpeg",
+        "-rtsp_transport", "tcp",
+        "-timeout", "5000000",
+        "-i", rtsp_url,
+        "-vn",
+        "-acodec", "libmp3lame",
+        "-b:a", "64k",
+        "-ar", "22050",
+        "-f", "mp3",
+        "-"
+    ]
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=4096
+    )
+    try:
+        while True:
+            chunk = process.stdout.read(4096)
+            if not chunk:
+                break
+            yield chunk
+    finally:
+        try:
+            process.terminate()
+            process.wait(timeout=1)
+        except Exception:
+            try:
+                process.kill()
+            except Exception:
+                pass
+
+@app.route("/api/audio/<cam_id>")
+@login_required
+def stream_camera_audio(cam_id):
+    cameras_config = {cam["id"]: cam for cam in nvr_manager.config.get("cameras", [])}
+    if cam_id not in cameras_config:
+        return "Camera not found", 404
+        
+    cam = cameras_config[cam_id]
+    rtsp_url = cam.get("rtsp_url")
+    if not rtsp_url:
+        return "RTSP URL missing", 404
+        
+    return Response(generate_audio_stream(rtsp_url), mimetype="audio/mpeg")
+
 # Stream session engine
 import tempfile
 hls_sessions = {}

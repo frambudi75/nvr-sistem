@@ -1186,17 +1186,28 @@
                         <div id="storageBar" class="storage-bar-fill"></div>
                     </div>
 
-                    <div style="font-family: monospace; font-size: 0.85rem; color: #e2e8f0; font-weight: 500;" id="storageText">
-                        Calculating...
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                        <div style="font-family: monospace; font-size: 0.85rem; color: #e2e8f0; font-weight: 500;" id="storageText">
+                            Calculating...
+                        </div>
+                        <div style="font-size: 0.78rem; color: #94a3b8;" id="storageRetentionEst"></div>
                     </div>
                 </div>
             </div>
 
             <!-- Cameras Card -->
             <div class="card">
-                <div class="flex-between" style="margin-bottom: 1.25rem;">
-                    <h2 class="card-header-title">Connected Cameras</h2>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);" id="camCountLabel"></span>
+                <div class="flex-between" style="margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <h2 class="card-header-title">Connected Cameras</h2>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);" id="camCountLabel"></span>
+                    </div>
+                    <div style="position: relative; min-width: 230px;">
+                        <input type="text" id="camSearchInput" placeholder="Cari nama kamera / area..." 
+                               oninput="filterCameraSearch(this.value)"
+                               style="padding: 0.35rem 0.75rem 0.35rem 2rem; font-size: 0.82rem; border-radius: 20px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; width: 100%;">
+                        <svg style="position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; fill: #64748b; pointer-events: none;" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    </div>
                 </div>
                 <div class="camera-grid" id="cameraGrid">Loading cameras...</div>
             </div>
@@ -1521,6 +1532,9 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button class="secondary" onclick="toggleMatrixPatrol()" id="btnMatrixPatrol" title="Auto-Patrol: Siklus kamera bergantian otomatis tiap 10 detik">
+                        🔄 Auto-Patrol: OFF
+                    </button>
                     <button class="secondary" onclick="toggleMatrixFullscreen()" id="btnTvWall" title="Layar Penuh TV Wall (Esc)">
                         📺 TV Wall (Fullscreen)
                     </button>
@@ -1559,8 +1573,13 @@
                     <video id="liveHlsVideo" controls autoplay playsinline style="display: none; width: 100%; height: 100%; object-fit: contain; background: black;"></video>
                     <canvas id="motionCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
                     
-                    <!-- Live Controls Overlay (Night Boost, PiP, Snapshot) -->
+                    <audio id="liveAudioPlayer" preload="none" style="display: none;"></audio>
+                    
+                    <!-- Live Controls Overlay (Night Boost, PiP, Audio, Snapshot) -->
                     <div style="position: absolute; bottom: 12px; right: 12px; display: flex; gap: 0.4rem; z-index: 10;">
+                        <button id="btnLiveAudio" class="playback-ctrl-btn" onclick="toggleLiveAudio()" style="background: rgba(0,0,0,0.7); padding: 0.4rem 0.75rem;" title="Dengarkan Suara Langsung (Live Audio)">
+                            🔇 Audio: OFF
+                        </button>
                         <button class="playback-ctrl-btn btn-night-boost" onclick="toggleNightBoost()" style="background: rgba(0,0,0,0.7); padding: 0.4rem 0.75rem;" title="Peningkat Kontras Malam (Night Boost)">
                             🌙 Night Boost
                         </button>
@@ -1891,6 +1910,13 @@
                     if (storageEl) {
                         storageEl.innerHTML = `<span style="color:#38bdf8; font-weight:600;">${sys.used_gb} GB</span> <span style="color:#64748b;">used</span> / <span style="color:#ffffff;">${sys.total_gb} GB</span> <span style="color:#64748b;">total</span> (<span style="color:#10b981;">${sys.percent_used}%</span>)`;
                     }
+                    const retEstEl = document.getElementById('storageRetentionEst');
+                    if (retEstEl) {
+                        const freeGb = Math.max(0, sys.total_gb - sys.used_gb);
+                        const activeCams = (currentStatus || []).filter(s => s.recording).length || 1;
+                        const estDays = Math.max(1, Math.round(freeGb / (activeCams * 22)));
+                        retEstEl.innerHTML = `⏳ Sisa: <b style="color:#f8fafc;">${freeGb.toFixed(1)} GB</b> (~${estDays} hari rekam untuk ${activeCams} kamera)`;
+                    }
                     const pathLabel = document.getElementById('storagePathLabel');
                     if (pathLabel && currentConfig.storage_path) {
                         pathLabel.innerText = currentConfig.storage_path;
@@ -1989,14 +2015,21 @@
             grid.innerHTML = '';
             
             const allCams = currentConfig.cameras || [];
+            const query = (cameraSearchFilter || '').trim().toLowerCase();
             const filteredCams = allCams.filter(cam => {
                 if (selectedCameraGroup !== 'all' && (cam.group || '').trim() !== selectedCameraGroup) return false;
                 const status = currentStatus.find(s => s.id === cam.id) || {};
                 if (selectedStatusFilter === 'rec') {
-                    return cam.enabled && status.recording;
+                    if (!cam.enabled || !status.recording) return false;
                 }
                 if (selectedStatusFilter === 'offline') {
-                    return !cam.enabled || !status.recording;
+                    if (cam.enabled && status.recording) return false;
+                }
+                if (query) {
+                    const matchName = (cam.name || '').toLowerCase().includes(query);
+                    const matchGroup = (cam.group || '').toLowerCase().includes(query);
+                    const matchBrand = (cam.brand || '').toLowerCase().includes(query);
+                    if (!matchName && !matchGroup && !matchBrand) return false;
                 }
                 return true;
             });
@@ -2102,38 +2135,124 @@
         }
 
         /* Grid view handlers */
-        function openGridView() {
+        let isMatrixPatrol = false;
+        let matrixPatrolInterval = null;
+        let matrixPatrolPageIndex = 0;
+
+        function getMatrixPageSize() {
+            const cols = document.getElementById('gridColsSelect').value;
+            if (cols === '1') return 1;
+            if (cols === '2') return 4;
+            if (cols === '3') return 9;
+            if (cols === '4') return 16;
+            return 4;
+        }
+
+        function renderGridContent() {
             const grid = document.getElementById('gridContainer');
-            grid.innerHTML = '';
-            currentConfig.cameras.forEach(cam => {
-                if (cam.enabled) {
-                    const card = document.createElement('div');
-                    card.style.cssText = "background: black; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; position: relative; border: 1px solid rgba(255,255,255,0.06);";
-                    card.innerHTML = `
-                        <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; z-index: 2;">${cam.name}</div>
-                        <img id="grid_stream_${cam.id}" src="/api/stream/${cam.id}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: contain;">
-                    `;
-                    grid.appendChild(card);
-                    
-                    const img = card.querySelector('img');
-                    img.onerror = () => {
-                        setTimeout(() => {
-                            const modal = document.getElementById('gridViewModal');
-                            if (modal && modal.classList.contains('active')) {
-                                img.src = `/api/stream/${cam.id}?t=${Date.now()}`;
-                            }
-                        }, 2500);
-                    };
-                }
+            if (!grid) return;
+            const enabledCams = (currentConfig.cameras || []).filter(c => c.enabled);
+            if (enabledCams.length === 0) {
+                grid.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">Tidak ada kamera aktif.</p>';
+                return;
+            }
+
+            const pageSize = isMatrixPatrol ? getMatrixPageSize() : enabledCams.length;
+            const totalPages = Math.ceil(enabledCams.length / pageSize) || 1;
+            if (matrixPatrolPageIndex >= totalPages) matrixPatrolPageIndex = 0;
+
+            const startIndex = isMatrixPatrol ? matrixPatrolPageIndex * pageSize : 0;
+            const pageCams = isMatrixPatrol ? enabledCams.slice(startIndex, startIndex + pageSize) : enabledCams;
+
+            grid.querySelectorAll('img').forEach(img => {
+                img.onerror = null;
+                img.src = '';
             });
-            changeGridLayout();
+            grid.innerHTML = '';
+
+            pageCams.forEach(cam => {
+                const card = document.createElement('div');
+                card.style.cssText = "background: black; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; position: relative; border: 1px solid rgba(255,255,255,0.06);";
+                card.innerHTML = `
+                    <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; z-index: 2;">${cam.name}</div>
+                    <img id="grid_stream_${cam.id}" src="/api/stream/${cam.id}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: contain;">
+                `;
+                grid.appendChild(card);
+                
+                const img = card.querySelector('img');
+                img.onerror = () => {
+                    setTimeout(() => {
+                        const modal = document.getElementById('gridViewModal');
+                        if (modal && modal.classList.contains('active')) {
+                            img.src = `/api/stream/${cam.id}?t=${Date.now()}`;
+                        }
+                    }, 2500);
+                };
+            });
+            changeGridLayout(false);
+        }
+
+        function toggleMatrixPatrol() {
+            if (isMatrixPatrol) {
+                stopMatrixPatrol();
+            } else {
+                startMatrixPatrol();
+            }
+        }
+
+        function startMatrixPatrol() {
+            const btn = document.getElementById('btnMatrixPatrol');
+            isMatrixPatrol = true;
+            matrixPatrolPageIndex = 0;
+            if (btn) {
+                btn.innerText = '🔄 Auto-Patrol: ON (10s)';
+                btn.style.background = 'rgba(16, 185, 129, 0.8)';
+                btn.style.borderColor = 'rgba(16, 185, 129, 1)';
+            }
+            renderGridContent();
+            if (matrixPatrolInterval) clearInterval(matrixPatrolInterval);
+            matrixPatrolInterval = setInterval(() => {
+                const enabledCams = (currentConfig.cameras || []).filter(c => c.enabled);
+                const pageSize = getMatrixPageSize();
+                const totalPages = Math.ceil(enabledCams.length / pageSize) || 1;
+                if (totalPages > 1) {
+                    matrixPatrolPageIndex = (matrixPatrolPageIndex + 1) % totalPages;
+                    renderGridContent();
+                }
+            }, 10000);
+        }
+
+        function stopMatrixPatrol() {
+            const btn = document.getElementById('btnMatrixPatrol');
+            isMatrixPatrol = false;
+            if (matrixPatrolInterval) {
+                clearInterval(matrixPatrolInterval);
+                matrixPatrolInterval = null;
+            }
+            if (btn) {
+                btn.innerText = '🔄 Auto-Patrol: OFF';
+                btn.style.background = '';
+                btn.style.borderColor = '';
+            }
+            renderGridContent();
+        }
+
+        function openGridView() {
+            isMatrixPatrol = false;
+            const btn = document.getElementById('btnMatrixPatrol');
+            if (btn) {
+                btn.innerText = '🔄 Auto-Patrol: OFF';
+                btn.style.background = '';
+                btn.style.borderColor = '';
+            }
+            renderGridContent();
             document.getElementById('gridViewModal').classList.add('active');
         }
 
         function closeGridView() {
+            stopMatrixPatrol();
             document.getElementById('gridViewModal').classList.remove('active');
             const grid = document.getElementById('gridContainer');
-            // Crucial: Clear all img.src before clearing container to abort persistent HTTP connections
             grid.querySelectorAll('img').forEach(img => {
                 img.onerror = null;
                 img.src = '';
@@ -2141,7 +2260,7 @@
             grid.innerHTML = ''; 
         }
 
-        function changeGridLayout() {
+        function changeGridLayout(triggerRerender = true) {
             const cols = document.getElementById('gridColsSelect').value;
             const container = document.getElementById('gridContainer');
             if (!container) return;
@@ -2150,6 +2269,9 @@
                 container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(400px, 1fr))';
             } else {
                 container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            }
+            if (triggerRerender && isMatrixPatrol) {
+                renderGridContent();
             }
         }
 
@@ -3798,6 +3920,12 @@
         /* Camera group and status filtering */
         let selectedCameraGroup = 'all';
         let selectedStatusFilter = 'all';
+        let cameraSearchFilter = '';
+
+        function filterCameraSearch(query) {
+            cameraSearchFilter = query;
+            renderDashboard();
+        }
 
         function filterCameraStatus(status) {
             selectedStatusFilter = status;
@@ -3909,7 +4037,49 @@
             }
         }
 
+        let isLiveAudioActive = false;
+
+        function toggleLiveAudio() {
+            const btn = document.getElementById('btnLiveAudio');
+            const audio = document.getElementById('liveAudioPlayer');
+            if (!audio || !currentViewCamId) return;
+
+            if (isLiveAudioActive) {
+                stopLiveAudio();
+            } else {
+                audio.src = `/api/audio/${currentViewCamId}?t=${Date.now()}`;
+                audio.play().then(() => {
+                    isLiveAudioActive = true;
+                    if (btn) {
+                        btn.innerText = '🔊 Audio: ON';
+                        btn.style.background = 'rgba(16, 185, 129, 0.8)';
+                        btn.style.borderColor = 'rgba(16, 185, 129, 1)';
+                    }
+                }).catch(err => {
+                    console.warn("Live audio error:", err);
+                    alert("Tidak dapat memulai streaming audio. Pastikan kamera memiliki mikrofon/audio stream RTSP aktif.");
+                    stopLiveAudio();
+                });
+            }
+        }
+
+        function stopLiveAudio() {
+            const btn = document.getElementById('btnLiveAudio');
+            const audio = document.getElementById('liveAudioPlayer');
+            if (audio) {
+                audio.pause();
+                audio.src = '';
+            }
+            isLiveAudioActive = false;
+            if (btn) {
+                btn.innerText = '🔇 Audio: OFF';
+                btn.style.background = 'rgba(0,0,0,0.7)';
+                btn.style.borderColor = 'rgba(255,255,255,0.2)';
+            }
+        }
+
         function stopLiveStream() {
+            stopLiveAudio();
             const img = document.getElementById('liveStreamImg');
             const video = document.getElementById('liveHlsVideo');
             
