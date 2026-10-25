@@ -412,7 +412,7 @@ def stream_camera(cam_id):
         
     return Response(generate_mjpeg_stream(rtsp_url), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-# --- Low-Latency HLS & Audio Stream Engine ---
+# Stream session engine
 import tempfile
 hls_sessions = {}
 hls_lock = threading.Lock()
@@ -489,7 +489,7 @@ def hls_segment(cam_id, segment):
         hls_sessions[cam_id]["last_active"] = time.time()
     return send_from_directory(hls_dir, segment, mimetype="video/MP2T")
 
-# --- Floor Plan & Remote Backup Routes ---
+# Floor plan and backup routes
 @app.route("/api/floorplan/image", methods=["GET"])
 @login_required
 def get_floorplan_image():
