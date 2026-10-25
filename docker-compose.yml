@@ -7,6 +7,7 @@ services:
     volumes:
       - ./recordings:/recordings
       - ./config.json:/config.json
+      - ./app:/app
     environment:
       - TZ=Asia/Jakarta # Adjust timezone as needed
     # ports:

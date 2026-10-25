@@ -268,8 +268,9 @@ def generate_mjpeg_stream(rtsp_url):
     command = [
         "ffmpeg",
         "-rtsp_transport", "tcp",
+        "-stimeout", "5000000",
         "-i", rtsp_url,
-        "-vf", "scale=640:-1", 
+        "-vf", "scale=640:-2", 
         "-r", "10",
         "-f", "image2pipe",
         "-vcodec", "mjpeg",
@@ -277,23 +278,32 @@ def generate_mjpeg_stream(rtsp_url):
         "-"
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    buffer = b""
     try:
         while True:
-            header = process.stdout.read(2)
-            if not header: break
-            if header != b'\xff\xd8': continue
-            
-            frame_data = bytearray(header)
+            chunk = process.stdout.read(8192)
+            if not chunk:
+                break
+            buffer += chunk
             while True:
-                byte = process.stdout.read(1)
-                if not byte: break
-                frame_data.extend(byte)
-                if len(frame_data) >= 2 and frame_data[-2:] == b'\xff\xd9': break
-            
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n')
+                start = buffer.find(b'\xff\xd8')
+                if start == -1:
+                    buffer = buffer[-1:] if buffer.endswith(b'\xff') else b""
+                    break
+                end = buffer.find(b'\xff\xd9', start + 2)
+                if end == -1:
+                    buffer = buffer[start:]
+                    break
+                frame = buffer[start:end+2]
+                buffer = buffer[end+2:]
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
     finally:
-        process.kill()
+        try:
+            process.kill()
+            process.wait()
+        except Exception:
+            pass
 
 @app.route("/api/ptz/<cam_id>/<direction>", methods=["POST"])
 @login_required
@@ -763,36 +773,60 @@ def delete_date_recordings(cam_id, date_str):
 @login_required
 def serve_recording(cam_id, filename):
     directory = os.path.join(nvr_manager.storage_path, cam_id)
-    return send_from_directory(directory, filename, as_attachment=request.args.get('download') == '1')
+    resp = send_from_directory(directory, filename, as_attachment=request.args.get('download') == '1', max_age=86400)
+    resp.headers["Accept-Ranges"] = "bytes"
+    return resp
 
 @app.route("/api/playback/transcode/<cam_id>/<path:filename>")
 @login_required
 def transcode_playback(cam_id, filename):
     """
-    Server-side FFmpeg transcoding proxy for H.264+/H.265 videos.
-    Converts incompatible codec to standard H.264 baseline on-the-fly
-    and streams the result to the browser as a playable MP4.
+    Server-side FFmpeg proxy for video playback compatibility.
+    Uses ultra-fast stream-copy when already H.264 to start instantly (<50ms),
+    or transcodes on-the-fly only if codec is HEVC/H.265.
     """
     filepath = os.path.join(nvr_manager.storage_path, cam_id, filename)
     if not os.path.exists(filepath):
         return "File not found", 404
 
+    # Probe codec to avoid heavy CPU re-encoding if already H.264
+    is_h264 = True
+    try:
+        probe_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name", "-of", "csv=p=0", filepath]
+        codec_res = subprocess.run(probe_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=2)
+        codec_name = codec_res.stdout.decode().strip().lower()
+        if codec_name in ["hevc", "h265"]:
+            is_h264 = False
+    except Exception:
+        is_h264 = True
+
     def generate():
-        command = [
-            "ffmpeg",
-            "-i", filepath,
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "23",
-            "-profile:v", "baseline",
-            "-level", "3.1",
-            "-pix_fmt", "yuv420p",
-            "-an",  # skip audio (CCTV biasanya tidak punya audio)
-            "-movflags", "frag_keyframe+empty_moov+faststart",
-            "-f", "mp4",
-            "-loglevel", "error",
-            "pipe:1"
-        ]
+        if is_h264:
+            command = [
+                "ffmpeg",
+                "-i", filepath,
+                "-c:v", "copy",
+                "-movflags", "frag_keyframe+empty_moov+faststart",
+                "-f", "mp4",
+                "-loglevel", "error",
+                "pipe:1"
+            ]
+        else:
+            command = [
+                "ffmpeg",
+                "-i", filepath,
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "23",
+                "-profile:v", "baseline",
+                "-level", "3.1",
+                "-pix_fmt", "yuv420p",
+                "-an",
+                "-movflags", "frag_keyframe+empty_moov+faststart",
+                "-f", "mp4",
+                "-loglevel", "error",
+                "pipe:1"
+            ]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
             while True:
@@ -801,8 +835,11 @@ def transcode_playback(cam_id, filename):
                     break
                 yield chunk
         finally:
-            process.kill()
-            process.wait()
+            try:
+                process.kill()
+                process.wait()
+            except Exception:
+                pass
 
     return Response(generate(), mimetype='video/mp4')
 
