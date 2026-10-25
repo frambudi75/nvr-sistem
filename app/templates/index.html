@@ -631,6 +631,51 @@
             letter-spacing: 0.02em;
         }
 
+        /* Quick Camera Switch Toggle */
+        .switch-toggle {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+            margin: 0;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .switch-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-toggle .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .25s ease;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .switch-toggle .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 2px;
+            bottom: 2px;
+            background-color: #94a3b8;
+            transition: .25s ease;
+            border-radius: 50%;
+        }
+        .switch-toggle input:checked + .slider {
+            background-color: rgba(16, 185, 129, 0.35);
+            border-color: #10b981;
+        }
+        .switch-toggle input:checked + .slider:before {
+            transform: translateX(16px);
+            background-color: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+        }
+
         .log-box {
             background: #050811;
             color: #38bdf8;
@@ -1645,6 +1690,12 @@
                     <input type="text" id="camGroup" placeholder="e.g. Outdoor, Lantai 1, Gudang, Parkiran">
                 </div>
 
+                <!-- Sub-Stream RTSP URL -->
+                <div class="form-group">
+                    <label>Sub-Stream RTSP URL (Optional - untuk Matrix View cepat)</label>
+                    <input type="text" id="camSubUrl" placeholder="e.g. rtsp://user:pass@ip:554/Streaming/Channels/102">
+                </div>
+
                 <!-- AI Human Detection Toggle -->
                 <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">
                     <input type="checkbox" id="camAiDetection" style="width: auto;" checked>
@@ -1869,6 +1920,7 @@
                 let locationBadge = cam.group ? `<span class="cam-meta-tag" style="color:#38bdf8; border-color: rgba(2,132,199,0.3);">📍 ${cam.group}</span>` : '';
                 let quotaBadge = cam.max_quota_gb ? `<span class="cam-meta-tag">💾 ${cam.max_quota_gb} GB</span>` : '';
                 let aiBadge = cam.ai_detection !== false ? `<span class="cam-meta-tag" style="color:#a78bfa;">🤖 AI Active</span>` : '';
+                let subBadge = cam.substream_url ? `<span class="cam-meta-tag" style="color:#06b6d4; border-color: rgba(6,182,212,0.3);">⚡ Sub-Stream</span>` : '';
 
                 const card = document.createElement('div');
                 card.className = 'camera-card';
@@ -1876,12 +1928,21 @@
                     <div>
                         <div class="flex-between">
                             <h3 style="margin: 0; font-size: 1.05rem; font-weight: 600; color: #ffffff;">${cam.name}</h3>
-                            <span class="cam-badge ${badgeClass}">${badgeLabel}</span>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="cam-badge ${badgeClass}">${badgeLabel}</span>
+                                ${userRole === 'admin' ? `
+                                <label class="switch-toggle" title="Nyalakan / Matikan Kamera">
+                                    <input type="checkbox" ${cam.enabled !== false ? 'checked' : ''} onchange="toggleCameraActive('${cam.id}', this)">
+                                    <span class="slider round"></span>
+                                </label>
+                                ` : ''}
+                            </div>
                         </div>
                         <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.4rem;">
                             <span class="cam-meta-tag">🏷️ ${brandTag}</span>
                             ${locationBadge}
                             ${aiBadge}
+                            ${subBadge}
                             ${quotaBadge}
                         </div>
                         <div class="url-truncate" title="${cam.rtsp_url}">
@@ -2621,6 +2682,7 @@
             document.getElementById('camAiDetection').checked = true;
             document.getElementById('camQuota').value = '0';
             document.getElementById('camGroup').value = '';
+            document.getElementById('camSubUrl').value = '';
             document.getElementById('camSchedEnabled').checked = false;
             document.getElementById('camSchedStart').value = '18:00';
             document.getElementById('camSchedEnd').value = '06:00';
@@ -2648,6 +2710,7 @@
             document.getElementById('camAiDetection').checked = cam.ai_detection !== false;
             document.getElementById('camQuota').value = cam.max_quota_gb || '0';
             document.getElementById('camGroup').value = cam.group || '';
+            document.getElementById('camSubUrl').value = cam.substream_url || '';
             
             const sched = cam.schedule || { enabled: false, start: '18:00', end: '06:00' };
             document.getElementById('camSchedEnabled').checked = sched.enabled;
@@ -2714,6 +2777,9 @@
             const group = document.getElementById('camGroup').value.trim();
             if (group) camData.group = group;
             
+            const subUrl = document.getElementById('camSubUrl').value.trim();
+            if (subUrl) camData.substream_url = subUrl;
+            
             camData.schedule = {
                 enabled: document.getElementById('camSchedEnabled').checked,
                 start: document.getElementById('camSchedStart').value,
@@ -2734,6 +2800,27 @@
             }
             closeModal();
             saveConfigToServer();
+        }
+
+        async function toggleCameraActive(camId, el) {
+            try {
+                const res = await fetch(`/api/cameras/${camId}/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert("Gagal mengubah status kamera: " + (data.message || 'Error'));
+                    el.checked = !el.checked;
+                    return;
+                }
+                if (typeof fetchData === 'function') {
+                    await fetchData();
+                }
+            } catch (err) {
+                alert("Koneksi gagal saat mengubah status kamera.");
+                el.checked = !el.checked;
+            }
         }
 
         function deleteCamera(id) {

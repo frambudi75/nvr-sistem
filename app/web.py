@@ -165,6 +165,34 @@ def get_status():
         
     return jsonify(status)
 
+@app.route("/api/cameras/<cam_id>/toggle", methods=["POST"])
+@admin_required
+def toggle_camera(cam_id):
+    try:
+        cameras = nvr_manager.config.get("cameras", [])
+        cam = next((c for c in cameras if c.get("id") == cam_id), None)
+        if not cam:
+            return jsonify({"status": "error", "message": "Camera not found"}), 404
+        
+        # Toggle enabled
+        current_state = cam.get("enabled", True)
+        new_state = not current_state
+        cam["enabled"] = new_state
+        
+        if nvr_manager.save_config():
+            nvr_manager.sync_cameras()
+            return jsonify({
+                "status": "success", 
+                "cam_id": cam_id, 
+                "enabled": new_state,
+                "message": f"Camera {'enabled' if new_state else 'disabled'} successfully"
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": "Failed to save configuration"}), 500
+    except Exception as e:
+        logger.error(f"Error toggling camera {cam_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/api/sysinfo", methods=["GET"])
 @login_required
 def get_sysinfo():
@@ -377,7 +405,8 @@ def stream_camera(cam_id):
     if cam_id not in cameras_config:
         return "Camera not found", 404
         
-    rtsp_url = cameras_config[cam_id].get("rtsp_url")
+    cam = cameras_config[cam_id]
+    rtsp_url = cam.get("substream_url") or cam.get("rtsp_url")
     if not rtsp_url:
         return "RTSP URL missing", 404
         
